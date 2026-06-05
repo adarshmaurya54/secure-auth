@@ -1,0 +1,125 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+// ---------------------- enum ------------------------
+
+enum Role {
+  USER 
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+enum Provider {
+  GOOGLE
+}
+enum AuditEvent {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  EMAIL_VERIFIED
+  VERIFICATION_EMAIL_SENT
+  ACCOUNT_CREATED
+  SESSION_REVOKED
+  ACCOUNT_SUSPENDED
+  OAUTH_LINKED
+}
+
+// ---------------------- Models -------------------
+
+model User {
+  id                    String                 @id @default(uuid())
+  name                  String
+  email                 String                 @unique
+  password              String?
+  isVerified            Boolean                @default(false)
+  role                  Role                   @default(USER)
+  status                AccountStatus          @default(ACTIVE)
+  lastLogin             DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  sessions              Session[]
+  oauthAccounts         OAuthAccount[]
+  verificationTokens    VerificationToken[]
+  passwordResetTokens   PasswordResetToken[]
+  auditLogs             AuditLog[]
+}
+
+
+model Session {
+  id                 String   @id @default(uuid())
+  userId             String
+  device             String?
+  browser            String?
+  ipAddress          String?
+  refreshTokenHash   String   @unique
+  expiresAt          DateTime
+  isRevoked          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OAuthAccount {
+  id                  String      @id @default(uuid())
+  userId              String
+  provider            Provider
+  providerAccountId   String
+  accessToken         String?
+  refreshToken        String?
+  expiresAt           DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model VerificationToken {
+  id          String   @id @default(uuid())
+  userId      String
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id          String   @id @default(uuid())
+  userId      String
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id          String       @id @default(uuid())
+  userId      String?
+  event       AuditEvent
+  ipAddress   String?
+  device      String?
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
