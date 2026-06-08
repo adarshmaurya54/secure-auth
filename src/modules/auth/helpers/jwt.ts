@@ -1,10 +1,11 @@
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 
-export function generateAccessToken(userId: string, role: string) {
+export function generateAccessToken(userId: string,sessionId: string, role: string) {
     return jwt.sign(
         {
             sub: userId,
+            sessionId,
             role,
             jti: uuidv4(),
         },
@@ -37,6 +38,7 @@ export function verifyAccessToken(token: string){
     return jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!) as {
         sub: string,
         role: string,
+        sessionId: string,
         jti: string,
         exp: number
     }

@@ -10,14 +10,41 @@ export async function findUserByEmail(email: string, tx?: tx) {
         where: {email},
     })
 }
-
-export async function findUserByUserId(userId: string, tx?: tx) {
-    const client = tx ?? prisma;
-    return await client.user.findUnique({
+export async function findUserByUserId(userId: string) {
+    return await prisma.user.findUnique({
         where: {id: userId},
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            isVerified: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+        },
     })
 }
 
+export async function updateUserPasswordByUserId(userId: string, hashPassword: string){
+    return await prisma.user.update({
+        where: {
+            id: userId
+        },
+        data: {
+            password: hashPassword
+        }
+    })
+}
+
+
+export async function findSessionBySessionId(sessionId: string){
+    return await prisma.session.findUnique({
+        where: {
+            id: sessionId
+        }
+    })
+}
 
 export async function createUser(data: RegisterInput, tx?: tx) {
     const client = tx ?? prisma;
@@ -44,6 +71,15 @@ export async function storeVerificationToken(userId: string, token: string, expi
     })
 }
 
+export async function deleteVerificationTokenByUserId(userId: string) {
+    return await prisma.verificationToken.deleteMany({
+        where: {
+            userId
+        }
+    })
+}
+
+
 export async function createSession(data: Prisma.SessionUncheckedCreateInput){
     return await prisma.session.create({
         data,
@@ -57,18 +93,47 @@ export async function updateLastLogin(userId: string) {
     })
 }
 
-export async function deleteSessionByRefreshToken(refreshTokenHash: string) {
-    return await prisma.session.delete({
+export async function revokeSessionByRefreshTokenHash(refreshTokenHash: string) {
+    return await prisma.session.update({
         where: {
             refreshTokenHash
+        },
+        data: {
+            isRevoked: true
+        }
+    })
+}
+export async function revokeSessionBySessionId(sessionId: string) {
+    return await prisma.session.update({
+        where: {
+            id: sessionId
+        },
+        data: {
+            isRevoked: true
         }
     })
 }
 
-export async function deleteSessionBySessionId(sessionId: string) {
-    return await prisma.session.delete({
+export async function revokeSessionByUserId(userId: string) {
+    return await prisma.session.updateMany({
         where: {
-            id: sessionId
+            userId
+        },
+        data: {
+            isRevoked: true
+        }
+    })
+}
+
+
+// -----------------------------------------
+// methods for refres token
+export async function updateSessionBySessionId(sessionId: string, refreshTokenHash: string, expiresAt: Date) {
+    return await prisma.session.update({
+        where: {id: sessionId},
+        data: {
+            refreshTokenHash,
+            expiresAt
         }
     })
 }
@@ -79,9 +144,48 @@ export async function deleteSessionByUserId(userId: string) {
         }
     })
 }
+// -------------------------------------------
 
 export async function findSessionByRefreshToken(refreshTokenHash: string){
     return await prisma.session.findUnique({
         where: {refreshTokenHash: refreshTokenHash}
     })
 }
+
+// -----------------------------------------
+// methods for reset password token
+export async function deletePasswordResetTokenByUserId(userId: string) {
+    return await prisma.passwordResetToken.deleteMany({
+        where: {
+            userId,
+        }
+    })
+}
+
+export async function createPasswordResetToken(userId: string, hashToken: string, tokenExpiry: Date) {
+    return await prisma.passwordResetToken.create({
+        data: {
+            userId,
+            token: hashToken,
+            expiresAt: tokenExpiry
+        }
+    })
+}
+
+export async function findPasswordResetToken(hashToken: string){
+    return await prisma.passwordResetToken.findUnique({
+        where: {
+            token: hashToken
+        },
+        select: {
+            id: true,
+            userId: true,
+            token: true,
+            expiresAt: true,
+            createdAt: true, 
+            user: true
+        }
+    })
+}
+
+// -----------------------------------------

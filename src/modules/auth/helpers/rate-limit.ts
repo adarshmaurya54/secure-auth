@@ -14,6 +14,12 @@ export const registerRateLimiter = new RateLimiterRedis({
     storeClient: redis,
     keyPrefix: 'rate:register',
     points: AUTH_CONSTANTS.MAX_REGISTER_ATTEMPTS, // 5 attempts
-    duration: 60 * 1, // per 10 minutes
+    duration: 60 * 60, // per 10 minutes
+})
+export const forgotPassRateLimiter = new RateLimiterRedis({
+    storeClient: redis,
+    keyPrefix: 'rate:forgotPass',
+    points: AUTH_CONSTANTS.MAX_FORGOT_PASSWORD_ATTEMPTS, // 3 attempts
+    duration: 60 * 60, // per 1 hour
 })
 

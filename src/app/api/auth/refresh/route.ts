@@ -1,15 +1,11 @@
 import { refreshTokenRotationService } from "@/modules/auth/services/auth.services";
-import { setAuthCookies } from "@/utils/cookies";
+import { clearAuthCookies, setAuthCookies } from "@/utils/cookies";
 import { errorResponse } from "@/utils/response";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest){
     try{
-        const {newAccessToken, newRefreshToken} = await refreshTokenRotationService({
-                ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
-                device: req.headers.get("user-agent") ?? "unknown",
-                browser: req.headers.get("user-agent") ?? "unknown"
-            })
+        const {newAccessToken, newRefreshToken} = await refreshTokenRotationService()
 
         const response = NextResponse.json({
             success: true,

@@ -1,19 +1,22 @@
 import { prisma } from "@/lib/prisma";
-import { loginSchema, RegisterInput, registerSchema } from "../validators/auth.validators";
+import { loginSchema, RegisterInput, registerSchema, passwordSchema } from "../validators/auth.validators";
 import crypto from "crypto";
 
 import * as argon from "argon2"
-import { errorResponse, successResponse } from "@/utils/response";
 import { sendVerificationEmail } from "../helpers/sendVerificationEmail";
 import { createAuditLog } from "@/utils/audit-log";
 import { AccountStatus, AuditEvent, Role } from "@/generated/prisma/enums";
-import { createSession, deleteSessionByRefreshToken, deleteSessionBySessionId, deleteSessionByUserId, findSessionByRefreshToken, findUserByEmail, findUserByUserId, updateLastLogin } from "../repository/auth.repository";
+import { createPasswordResetToken, createSession, deletePasswordResetTokenByUserId, deleteSessionByUserId, deleteVerificationTokenByUserId, findPasswordResetToken, findSessionByRefreshToken, findSessionBySessionId, findUserByEmail, findUserByUserId, revokeSessionByRefreshTokenHash, revokeSessionBySessionId, revokeSessionByUserId, storeVerificationToken, updateLastLogin, updateSessionBySessionId, updateUserPasswordByUserId } from "../repository/auth.repository";
 import { generateAccessToken, generateRefreshToken, verifyAccessToken, verifyRefreshToken } from "../helpers/jwt";
 import { hashToken } from "../helpers/hash-token";
 import { cookies } from "next/headers";
 import { clearAuthCookies } from "@/utils/cookies";
 import { NextResponse } from "next/server";
 import { blacklistToken } from "../helpers/token-blacklist";
+import { success } from "zod";
+import { errorResponse, successResponse } from "@/utils/response";
+import { sendResetPasswordEmail } from "../helpers/sendResetPasswordEmail";
+import { checkEmailCooldown, setEmailCooldown } from "../helpers/email-cooldown";
 
 type LoginInput = {
     email: string;
@@ -228,7 +231,6 @@ export async function loginService(body: LoginInput, requestInfo: LoginRequestIn
 
     // generate tokens
 
-    const accessToken = generateAccessToken(user.id, user.role);
 
     const { token: refreshToken, jti } = generateRefreshToken(user.id)
 
@@ -242,6 +244,7 @@ export async function loginService(body: LoginInput, requestInfo: LoginRequestIn
         browser: requestInfo.browser,
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
     })
+    const accessToken = generateAccessToken(user.id, session.id, user.role);
 
     // udpate last login
     await updateLastLogin(user.id);
@@ -269,7 +272,7 @@ export async function loginService(body: LoginInput, requestInfo: LoginRequestIn
     }
 }
 
-export async function logoutFromCurrentDeviceSevice() {
+export async function logoutFromCurrentOrAllDevicesService(device: string, requestInfo: { ipAddress: string, device: string }) {
     try {
         const cookieStore = await cookies();
         const accessToken =
@@ -277,9 +280,6 @@ export async function logoutFromCurrentDeviceSevice() {
 
         const refreshToken =
             cookieStore.get("refresh_token")?.value;
-
-            console.log(accessToken, refreshToken)
-
 
         if (!refreshToken) {
             const response = NextResponse.json({ success: true, message: "Already logout" }, { status: 200 })
@@ -289,10 +289,13 @@ export async function logoutFromCurrentDeviceSevice() {
 
         // verify access token
         const accessPayload = verifyAccessToken(accessToken!);
-        // verify refresh token
-        const refreshPayload = verifyRefreshToken(refreshToken);
-
-        await deleteSessionByRefreshToken(refreshPayload.sub)
+        let responseMsg = "Logout successfully"
+        if (device === "CURRENT") {
+            await revokeSessionByRefreshTokenHash(hashToken(refreshToken))
+        } else if (device === "ALL") {
+            await revokeSessionByUserId(accessPayload.sub)
+            responseMsg = "You logged out from all devices."
+        }
 
         // calculating ramaining expiry
 
@@ -302,24 +305,35 @@ export async function logoutFromCurrentDeviceSevice() {
 
         // blacklist token
         if (ttl > 0) {
+
             await blacklistToken(accessPayload.jti, ttl)
         }
 
+        await createAuditLog({
+            userId: accessPayload.sub,
+            event: AuditEvent.LOGOUT,
+            ipAddress: requestInfo.ipAddress,
+            device: requestInfo.device,
+            metadata: {
+                logout: device === "CURRENT" ? "Logged out from current device" : "Logged out from all devices"
+            }
+        })
+
         const response = NextResponse.json({
             success: true,
-            message: "Logged out successfully",
+            message: responseMsg,
         }, { status: 200 })
 
         clearAuthCookies(response);
 
         return response;
-    } catch {
+    } catch (err) {
         const response = NextResponse.json(
             {
-                success: true,
-                message: "Logged out",
+                success: false,
+                message: "Something went wrong",
             },
-            { status: 200 }
+            { status: 500 }
         );
 
         clearAuthCookies(response);
@@ -329,48 +343,193 @@ export async function logoutFromCurrentDeviceSevice() {
 
 }
 
+export async function logoutFromSpecificDeviceService(sessionId: string, userId: string, requestInfo: { device: string, ipAddress: string }) {
+    const session = await findSessionBySessionId(sessionId);
 
-export async function refreshTokenRotationService(requestInfo: LoginRequestInfo) {
+    if (!session) {
+        throw new Error('Session not found')
+    }
+
+    if (session.isRevoked) {
+        throw new Error('Already logged out')
+    }
+
+    // Security check
+    if (session.userId !== userId) {
+        throw new Error("Unauthorized")
+    }
+
+    await revokeSessionBySessionId(session.id)
+
+    await createAuditLog({
+        userId,
+        event: AuditEvent.LOGOUT,
+        ipAddress: requestInfo.ipAddress,
+        device: requestInfo.device,
+        metadata: {
+            logout: "Logout from device " + requestInfo.device,
+        }
+    })
+
+    return {
+        message: "Device logged out successfully"
+    }
+}
+
+
+
+
+export async function refreshTokenRotationService() {
     const cookieStore = await cookies();
 
     const refreshToken = cookieStore.get("refresh_token")?.value;
 
-    if(!refreshToken){
+    if (!refreshToken) {
         throw new Error("Unauthorized")
     }
 
-    const {sub} = verifyRefreshToken(refreshToken)
+    const { sub } = verifyRefreshToken(refreshToken)
     const user = await findUserByUserId(sub);
     const refreshTokenHash = hashToken(refreshToken);
 
     const session = await findSessionByRefreshToken(refreshTokenHash)
 
-    if(!session) {
+    if (!session) {
         await deleteSessionByUserId(sub);
         throw new Error("Security issue detected. Login again.")
     }
 
+    if (session.isRevoked) {
+        throw new Error("Session not found")
+    }
 
-    // delete the old session
-    await deleteSessionBySessionId(session.id)
-
-    const newAccessToken = generateAccessToken(sub, user?.role ?? Role.USER)
-    const {token: newRefreshToken, jti} = generateRefreshToken(sub)
+    const newAccessToken = generateAccessToken(sub, session.id, user?.role ?? Role.USER)
+    const { token: newRefreshToken, jti } = generateRefreshToken(sub)
 
     const newRefreshTokenHash = hashToken(newRefreshToken);
-
-    const newSession = await createSession({
-        userId: user?.id!,
-        refreshTokenHash: newRefreshTokenHash,
-        ipAddress: requestInfo.ipAddress,
-        device: requestInfo.device,
-        browser: requestInfo.browser,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-    })
+    const newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+    // update the old session
+    await updateSessionBySessionId(session.id, newRefreshTokenHash, newExpiry)
 
     return {
-        newSession,
         newRefreshToken,
         newAccessToken
     }
+}
+
+export async function forgotPasswordService(email: string, requestInfo: { ipAddress: string, device: string }) {
+    // find user by email
+    const user = await findUserByEmail(email);
+    if (!user) {
+        return successResponse("If this email exist, a reset link was sent.", null, 200);
+    }
+
+    await deletePasswordResetTokenByUserId(user.id);
+
+    const token = crypto.randomBytes(32).toString("hex")
+    const hashPasswordResetToken = hashToken(token);
+    const tokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 24 hours from now
+
+    await createPasswordResetToken(user.id, hashPasswordResetToken, tokenExpiry);
+
+    try {
+        const cooldownKey = `email_cooldown:${user.id}:verification`;
+        // cooldown 60 seconds between the email
+        await checkEmailCooldown(cooldownKey);
+        await sendResetPasswordEmail(user.email, token);
+        await setEmailCooldown(cooldownKey);
+        await createAuditLog({
+            userId: user.id,
+            event: AuditEvent.PASSWORD_RESET_REQUESTED,
+            ipAddress: requestInfo.ipAddress,
+            device: requestInfo.device
+        })
+        await createAuditLog({
+            userId: user.id,
+            event: AuditEvent.VERIFICATION_RESET_PASSWORD_EMAIL_SENT,
+            ipAddress: requestInfo.ipAddress,
+            device: requestInfo.device
+        })
+    } catch (error) {
+        await deletePasswordResetTokenByUserId(user.id);
+    }
+
+    return successResponse("If this email exist, a reset link was sent.", null, 200);
+}
+
+export async function resetPasswordService(tokenHash: string, newPassword: string, requestInfo: { ipAddress: string, device: string }) {
+    const hashPasswordResetToken = hashToken(tokenHash);
+    const token = await findPasswordResetToken(hashPasswordResetToken)
+    if (!token) {
+        return errorResponse("Invalid or expired token", null, 400)
+    }
+
+    const tokenExpiry = token.expiresAt;
+    const currentTime = new Date();
+
+    if (tokenExpiry < currentTime) {
+        await deletePasswordResetTokenByUserId(token.user.id);
+        return errorResponse("Expired token", null, 400)
+    }
+
+    // Validate input
+    const validatedData = passwordSchema.safeParse({ password: newPassword });
+
+    if (!validatedData.success) {
+        return errorResponse(validatedData.error.issues[0].message, "null value", 400);
+    }
+
+    const { password } = validatedData.data;
+    const hashNewPassword = await argon.hash(password);
+
+    await updateUserPasswordByUserId(token.user.id, hashNewPassword);
+
+    // revoke all devices sessions
+    await revokeSessionByUserId(token.user.id);
+
+    // delete the password reset token
+    await deletePasswordResetTokenByUserId(token.user.id);
+
+    await createAuditLog({
+        userId: token.user.id,
+        event: AuditEvent.PASSWORD_CHANGED,
+        ipAddress: requestInfo.ipAddress,
+        device: requestInfo.device,
+    })
+    return successResponse("Password reset successful. Please login.", null, 200)
+}
+
+export async function resendVerificationEmailService(email: string, requestInfo: { ipAddress: string, device: string }) {
+    const user = await findUserByEmail(email)
+    if (!user) {
+        return successResponse("If this email exists, a verification email has been sent.", null, 200);
+    }
+
+    if (user.isVerified) {
+        return errorResponse("Email is already verified", null, 400);
+    }
+
+    const cooldownKey = `email_cooldown:${user.id}:verification`;
+
+    await checkEmailCooldown(cooldownKey);
+
+    await deleteVerificationTokenByUserId(user.id);
+
+    //generate verification token
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const hashedVerificationToken = hashToken(verificationToken);
+    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+
+    await storeVerificationToken(user.id, hashedVerificationToken, tokenExpiry);
+
+    await sendVerificationEmail(user.email, verificationToken);
+    await setEmailCooldown(cooldownKey);
+    await createAuditLog({
+        userId: user.id,
+        event: AuditEvent.VERIFICATION_EMAIL_SENT,
+        ipAddress: requestInfo.ipAddress,
+        device: requestInfo.device,
+    })
+
+    return successResponse("If this email exists, a verification email has been sent.", null, 200);
 }
