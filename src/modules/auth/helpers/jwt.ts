@@ -1,3 +1,4 @@
+import { AUTH_CONSTANTS } from "@/constants";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 
@@ -11,7 +12,7 @@ export function generateAccessToken(userId: string,sessionId: string, role: stri
         },
         process.env.ACCESS_TOKEN_SECRET!,
         {
-            expiresIn: "15m",
+            expiresIn: AUTH_CONSTANTS.ACCESS_TOKEN_EXPIRY,
         }
     )
 }
@@ -26,7 +27,7 @@ export function generateRefreshToken(userId: string) {
         },
         process.env.REFRESH_TOKEN_SECRET!,
         {
-            expiresIn: "7d",
+            expiresIn: AUTH_CONSTANTS.REFRESH_TOKEN_EXPIRY,
         }
     )
 

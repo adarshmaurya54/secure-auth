@@ -1,3 +1,4 @@
+import { handleApiError } from "@/lib/errors/handle-api-error";
 import { refreshTokenRotationService } from "@/modules/auth/services/auth.services";
 import { clearAuthCookies, setAuthCookies } from "@/utils/cookies";
 import { errorResponse } from "@/utils/response";
@@ -16,6 +17,6 @@ export async function POST(req: NextRequest){
 
         return response;
     }catch(error){
-        return errorResponse(error instanceof Error ? error.message : "Something went wrong", null, 500);
+        return handleApiError(error)
     }
 }

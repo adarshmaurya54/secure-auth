@@ -1,6 +1,6 @@
+import { AUTH_CONSTANTS } from "@/constants";
 import { redis } from "@/lib/redis";
 import {RateLimiterRedis} from "rate-limiter-flexible";
-import { AUTH_CONSTANTS } from "../constants/auth.constants";
 
 export const loginRateLimiter = new RateLimiterRedis({
     storeClient: redis,

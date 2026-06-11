@@ -13,115 +13,12 @@ import { cookies } from "next/headers";
 import { clearAuthCookies } from "@/utils/cookies";
 import { NextResponse } from "next/server";
 import { blacklistToken } from "../helpers/token-blacklist";
-import { success } from "zod";
 import { errorResponse, successResponse } from "@/utils/response";
 import { sendResetPasswordEmail } from "../helpers/sendResetPasswordEmail";
 import { checkEmailCooldown, setEmailCooldown } from "../helpers/email-cooldown";
-
-type LoginInput = {
-    email: string;
-    password: string;
-}
-
-type LoginRequestInfo = {
-    ipAddress: string;
-    device: string;
-    browser: string;
-}
-
-export async function registerService(body: RegisterInput, requestInfo: { ipAddress: string, device: string }) {
-    const validatedData = registerSchema.safeParse(body);
-
-    if (!validatedData.success) {
-        throw new Error(validatedData.error.issues[0].message);
-    }
-
-    const { name, email, password } = validatedData.data;
-    const hashedPassword = await argon.hash(password);
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    const hashedVerificationToken = hashToken(verificationToken);
-    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
-
-    const result =
-        await prisma.$transaction(
-            async (tx) => {
-                const existingUser =
-                    await tx.user.findUnique({
-                        where: { email },
-                    });
-
-                if (existingUser) {
-                    throw new Error(
-                        "User already exists"
-                    );
-                }
-
-                const user =
-                    await tx.user.create({
-                        data: {
-                            name,
-                            email,
-                            password:
-                                hashedPassword,
-                        },
-                    });
-
-                await tx.verificationToken.create({
-                    data: {
-                        userId: user.id,
-                        token:
-                            hashedVerificationToken,
-                        expiresAt:
-                            tokenExpiry,
-                    },
-                });
-
-                return {
-                    user,
-                    verificationToken,
-                };
-            },
-            {
-                maxWait: 10000,
-                timeout: 10000,
-            }
-        );
-
-
-    try {
-        // Send verification email
-        await sendVerificationEmail(result.user.email, result.verificationToken);
-        await createAuditLog({
-            userId: result.user.id,
-            event: AuditEvent.ACCOUNT_CREATED,
-            ipAddress: requestInfo.ipAddress,
-            device: requestInfo.device,
-
-        })
-        await createAuditLog({
-            userId: result.user.id,
-            event: AuditEvent.VERIFICATION_EMAIL_SENT,
-            ipAddress: requestInfo.ipAddress,
-            device: requestInfo.device,
-        })
-    } catch {
-        // rollback transaction if email sending fails, but user is created. This ensures data consistency and allows user to request new verification email if needed.
-        await prisma.user.delete({
-            where: {
-                id: result.user.id
-            }
-        })
-
-        throw new Error("Failed to send verification email, please try registering again");
-    }
-    return {
-        user: {
-            id: result.user.id,
-            name: result.user.name,
-            email: result.user.email,
-        }
-    };
-}
+import { handleApiError } from "@/lib/errors/handle-api-error";
+import { ApiError } from "@/lib/errors/api-error";
+import { COOKIE_NAMES } from "@/constants";
 
 export async function verifyEmailService(rawToken: string) {
     if (!rawToken) {
@@ -177,109 +74,16 @@ export async function verifyEmailService(rawToken: string) {
     }
 }
 
-export async function loginService(body: LoginInput, requestInfo: LoginRequestInfo) {
-    // zod validation for body
-    const validatedData = loginSchema.safeParse(body);
 
-    if (!validatedData.success) {
-        throw new Error(validatedData.error.issues[0].message);
-    }
-
-    const { email, password } = validatedData.data;
-
-    const user = await findUserByEmail(email);
-
-    if (!user) {
-        await createAuditLog({
-            userId: "unknown",
-            event: AuditEvent.LOGIN_FAILED,
-            ipAddress: requestInfo.ipAddress,
-            device: requestInfo.device,
-            metadata: {
-                email,
-                reason: "User not found"
-            }
-        })
-
-        throw new Error("Invalid email or password");
-    }
-
-    // verify password
-    const isPasswordValid = await argon.verify(user.password ?? "", password);
-
-    if (!isPasswordValid) {
-        await createAuditLog({
-            userId: user.id,
-            event: AuditEvent.LOGIN_FAILED,
-            ipAddress: requestInfo.ipAddress,
-            device: requestInfo.device,
-            metadata: {
-                email,
-                reason: "Invalid password"
-            }
-        })
-        throw new Error("Invalid email or password");
-    }
-
-    if (!user.isVerified) {
-        throw new Error("Email is not verified, please check your inbox for verification email");
-    }
-
-    if (user.status === AccountStatus.SUSPENDED || user.status === AccountStatus.BANNED) {
-        throw new Error("Your account is suspended or banned, please contact support for more information");
-    }
-
-    // generate tokens
-
-
-    const { token: refreshToken, jti } = generateRefreshToken(user.id)
-
-    const refreshTokenHash = hashToken(refreshToken);
-
-    const session = await createSession({
-        userId: user.id,
-        refreshTokenHash,
-        ipAddress: requestInfo.ipAddress,
-        device: requestInfo.device,
-        browser: requestInfo.browser,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-    })
-    const accessToken = generateAccessToken(user.id, session.id, user.role);
-
-    // udpate last login
-    await updateLastLogin(user.id);
-
-    await createAuditLog({
-        userId: user.id,
-        event: AuditEvent.LOGIN_SUCCESS,
-        ipAddress: requestInfo.ipAddress,
-        device: requestInfo.device,
-        metadata: {
-            sessionId: session.id,
-            jti
-        }
-    })
-
-    return {
-        user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role
-        },
-        accessToken,
-        refreshToken
-    }
-}
 
 export async function logoutFromCurrentOrAllDevicesService(device: string, requestInfo: { ipAddress: string, device: string }) {
     try {
         const cookieStore = await cookies();
         const accessToken =
-            cookieStore.get("access_token")?.value;
+            cookieStore.get(COOKIE_NAMES.ACCESS_TOKEN)?.value;
 
         const refreshToken =
-            cookieStore.get("refresh_token")?.value;
+            cookieStore.get( COOKIE_NAMES.REFRESH_TOKEN)?.value;
 
         if (!refreshToken) {
             const response = NextResponse.json({ success: true, message: "Already logout" }, { status: 200 })
@@ -291,7 +95,9 @@ export async function logoutFromCurrentOrAllDevicesService(device: string, reque
         const accessPayload = verifyAccessToken(accessToken!);
         let responseMsg = "Logout successfully"
         if (device === "CURRENT") {
+            console.log("Logout -current")
             await revokeSessionByRefreshTokenHash(hashToken(refreshToken))
+            console.log("revoked")
         } else if (device === "ALL") {
             await revokeSessionByUserId(accessPayload.sub)
             responseMsg = "You logged out from all devices."
@@ -328,17 +134,7 @@ export async function logoutFromCurrentOrAllDevicesService(device: string, reque
 
         return response;
     } catch (err) {
-        const response = NextResponse.json(
-            {
-                success: false,
-                message: "Something went wrong",
-            },
-            { status: 500 }
-        );
-
-        clearAuthCookies(response);
-
-        return response;
+        return handleApiError(err);
     }
 
 }
@@ -382,10 +178,10 @@ export async function logoutFromSpecificDeviceService(sessionId: string, userId:
 export async function refreshTokenRotationService() {
     const cookieStore = await cookies();
 
-    const refreshToken = cookieStore.get("refresh_token")?.value;
+    const refreshToken = cookieStore.get(COOKIE_NAMES.REFRESH_TOKEN)?.value;
 
     if (!refreshToken) {
-        throw new Error("Unauthorized")
+        throw new ApiError(401,"Unauthorized")
     }
 
     const { sub } = verifyRefreshToken(refreshToken)
@@ -396,11 +192,11 @@ export async function refreshTokenRotationService() {
 
     if (!session) {
         await deleteSessionByUserId(sub);
-        throw new Error("Security issue detected. Login again.")
+        throw new ApiError(401 , "Security issue detected. Login again.")
     }
 
     if (session.isRevoked) {
-        throw new Error("Session not found")
+        throw new ApiError(401,"Session not found")
     }
 
     const newAccessToken = generateAccessToken(sub, session.id, user?.role ?? Role.USER)

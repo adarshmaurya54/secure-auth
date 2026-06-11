@@ -3,7 +3,7 @@ import { AuditEvent } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 
 type CreateAuditLogParams = {
-    userId: string;
+    userId?: string;
     event: AuditEvent;
     ipAddress?: string;
     device?: string;

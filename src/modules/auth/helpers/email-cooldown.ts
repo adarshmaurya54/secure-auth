@@ -1,5 +1,5 @@
+import { AUTH_CONSTANTS } from "@/constants";
 import { redis } from "@/lib/redis";
-import { AUTH_CONSTANTS } from "../constants/auth.constants";
 
 export async function checkEmailCooldown(key: string) {
     const exists = await redis.get(key);

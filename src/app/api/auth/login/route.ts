@@ -1,6 +1,6 @@
 import { loginRateLimiter } from "@/modules/auth/helpers/rate-limit";
 import { rateLimit } from "@/modules/auth/helpers/rate-limit-helper";
-import { loginService } from "@/modules/auth/services/auth.services";
+import { loginService } from "@/modules/auth/services/authService/login.service";
 import { setAuthCookies } from "@/utils/cookies";
 import { errorResponse, successResponse } from "@/utils/response";
 import { NextRequest } from "next/server";
@@ -9,8 +9,8 @@ export async function POST(req: NextRequest){
     try{
         const ip = req.headers.get("x-forwarded-for") ?? "unknown";
 
-        await rateLimit(loginRateLimiter, ip);
-
+        // await rateLimit(loginRateLimiter, ip);
+        console.log("POST login API CALLED")
         const body = await req.json();
         const result = await loginService(
             body,

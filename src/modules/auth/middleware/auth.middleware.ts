@@ -1,51 +1,83 @@
 import { NextRequest } from "next/server";
 import { verifyAccessToken } from "../helpers/jwt";
-import { prisma } from "@/lib/prisma";
 import { isTokenBlacklisted } from "../helpers/token-blacklist";
 import { findUserByUserId } from "../repository/auth.repository";
+import { ApiError } from "@/lib/errors/api-error";
 
 type JwtPayload = {
     sub: string;
     sessionId: string;
     jti: string;
     role: string;
-    exp: number
-}
+    exp: number;
+};
 
-export async function authenticate(request: NextRequest) {
-    const accessToken = request.cookies.get("access_token")?.value;
+export async function authenticate(
+    request: NextRequest
+) {
+    const accessToken =
+        request.cookies.get(
+            "access_token"
+        )?.value;
 
     if (!accessToken) {
-        throw new Error("Unauthorized")
+        throw new ApiError(
+            401,
+            "Unauthorized"
+        );
     }
 
     let payload: JwtPayload;
 
     try {
-        payload = verifyAccessToken(accessToken) as JwtPayload;
+        payload = verifyAccessToken(
+            accessToken
+        ) as JwtPayload;
     } catch {
-        throw new Error("Invalid or Expire Token");
+        throw new ApiError(
+            401,
+            "Invalid or expired token"
+        );
     }
 
-    // check for blacklist token
-    const isBlacklisted = await isTokenBlacklisted(payload.jti)
+    const isBlacklisted =
+        await isTokenBlacklisted(
+            payload.jti
+        );
 
-    if(isBlacklisted){
-        throw new Error("Token revoked")
+    if (isBlacklisted) {
+        throw new ApiError(
+            401,
+            "Token revoked"
+        );
     }
 
-    const user = await findUserByUserId(payload.sub)
+    const user =
+        await findUserByUserId(
+            payload.sub
+        );
 
     if (!user) {
-        throw new Error("User not found")
+        throw new ApiError(
+            404,
+            "User not found"
+        );
     }
 
     if (!user.isVerified) {
-        throw new Error("User is not verified, please verify you email.")
+        throw new ApiError(
+            403,
+            "Please verify your email"
+        );
     }
 
-    if (user.status !== "ACTIVE") {
-        throw new Error("Account suspended");
+    if (
+        user.status !== "ACTIVE"
+    ) {
+        throw new ApiError(
+            403,
+            "Account suspended"
+        );
     }
 
     return user;
@@ -55,7 +87,12 @@ export function requireRole(
     userRole: string,
     requiredRole: string
 ) {
-    if (userRole !== requiredRole) {
-        throw new Error("Forbidden");
+    if (
+        userRole !== requiredRole
+    ) {
+        throw new ApiError(
+            403,
+            "Forbidden"
+        );
     }
 }

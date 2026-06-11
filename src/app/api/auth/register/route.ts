@@ -1,11 +1,6 @@
-import { AuditEvent } from "@/generated/prisma/enums";
-import { prisma } from "@/lib/prisma";
-import { redis } from "@/lib/redis";
 import { registerRateLimiter } from "@/modules/auth/helpers/rate-limit";
 import { rateLimit } from "@/modules/auth/helpers/rate-limit-helper";
-import { sendVerificationEmail } from "@/modules/auth/helpers/sendVerificationEmail";
-import { registerService } from "@/modules/auth/services/auth.services";
-import { createAuditLog } from "@/utils/audit-log";
+import { registerService } from "@/modules/auth/services/authService/register.service";
 import { errorResponse, successResponse } from "@/utils/response";
 import { NextRequest, NextResponse } from "next/server";
 
