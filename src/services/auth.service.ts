@@ -17,12 +17,14 @@ export const authService = {
         const res = await api.get("/user/me");
         return res.data.data;
     },
-    // async forgotPassword(email: string) {
-    //     await api.post("/auth/forgot-password", { email });
-    // },
-    // async resetPassword(token: string, password: string) {
-    //     await api.post("/auth/reset-password", { token, password });
-    // },
+    async forgotPassword(email: string) {
+        const {data} = await api.post("/auth/forgot-password", { email });
+        return data;
+    },
+    async resetPassword(token: string, newPassword: string) {
+        const {data} = await api.post("/auth/reset-password", { token, newPassword });
+        return data;
+    },
     // async resendVerification() {
     //     await api.post("/auth/resend-verification");
     // },

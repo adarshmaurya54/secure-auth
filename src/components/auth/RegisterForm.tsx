@@ -15,6 +15,7 @@ import { authService } from '@/services/auth.service'
 import axios from 'axios'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { showApiError } from '@/lib/errors/toast-error'
 
 const RegisterForm = () => {
     const [serverError, setServerError] = useState("");
@@ -40,13 +41,9 @@ const RegisterForm = () => {
             setSubmitted(true);
             setSubmittedEmail(values.email);
         } catch (error) {
-            if (axios.isAxiosError(error)) {
-                setServerError(
-                    error.response?.data?.message ??
-                    "Something went wrong"
-                );
-                toast.error(error.response?.data?.message ?? "Something went wrong")
-            }
+            showApiError(
+                error,
+            );
         }
     }
 

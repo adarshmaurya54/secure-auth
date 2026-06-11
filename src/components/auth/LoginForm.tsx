@@ -12,6 +12,7 @@ import { Button } from "../ui/button";
 import axios from "axios";
 import { toast } from "sonner";
 import { PasswordInput } from "./PasswordInput";
+import { showApiError } from "@/lib/errors/toast-error";
 
 export function LoginForm() {
     const router = useRouter();
@@ -36,25 +37,9 @@ export function LoginForm() {
             await login(values.email, values.password);
             router.replace(callbackUrl ?? "/dashboard");
         } catch (err) {
-            if (
-                axios.isAxiosError(
-                    err
-                )
-            ) {
-                setServerError(
-                    err.response?.data
-                        ?.message ??
-                    "Invalid email or password"
-                );
-                toast.error(err.response?.data
-                    ?.message ??
-                    "Invalid email or password")
-
-                return;
-            }
-
-            setServerError(
-                "Something went wrong"
+            showApiError(
+                err,
+                "Invalid email or password"
             );
         }
     }
