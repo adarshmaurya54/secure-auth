@@ -1,34 +1,60 @@
-// src/app/(dashboard)/layout.tsx
-
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const { logout } = useAuth();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    await logout();
-    router.replace("/login");
-  };
+  const handleLogout =
+    async () => {
+      try {
+        setIsLoggingOut(true);
+
+        await logout();
+
+        router.replace(
+          "/login"
+        );
+      } finally {
+        setIsLoggingOut(false);
+      }
+    };
 
   return (
-    <div>
-      <nav className="border-b p-4 flex justify-between">
-        <h1>Dashboard</h1>
+    <div className="min-h-screen bg-muted/30">
+      <nav className="flex h-16 items-center justify-between border-b bg-background px-6">
+        <h1 className="text-lg font-semibold">
+          Dashboard
+        </h1>
 
-        <button onClick={handleLogout}>
-          Logout
-        </button>
+        <Button
+          onClick={
+            handleLogout
+          }
+          disabled={
+            isLoggingOut
+          }
+        >
+          {isLoggingOut
+            ? "Logging out..."
+            : "Logout"}
+        </Button>
       </nav>
 
-      <main>{children}</main>
+      <main className="p-6">
+        {children}
+      </main>
     </div>
   );
 }

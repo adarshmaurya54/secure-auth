@@ -18,14 +18,19 @@ export const authService = {
         return res.data.data;
     },
     async forgotPassword(email: string) {
-        const {data} = await api.post("/auth/forgot-password", { email });
+        const { data } = await api.post("/auth/forgot-password", { email });
         return data;
     },
     async resetPassword(token: string, newPassword: string) {
-        const {data} = await api.post("/auth/reset-password", { token, newPassword });
+        const { data } = await api.post("/auth/reset-password", { token, newPassword });
         return data;
     },
-    // async resendVerification() {
-    //     await api.post("/auth/resend-verification");
-    // },
+    async verifyEmail(data: { email: string; code: string }) {
+        const res = await api.post("/auth/verify-email", data);
+        return res.data;
+    },
+    async resendVerification(email: string) {
+        const {data} = await api.post("/auth/resend-verification", {email});
+        return data;
+    },
 };

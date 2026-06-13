@@ -4,21 +4,31 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import EmailVerificationForm from "@/components/auth/EmailVerificationForm";
 
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const email = searchParams.get("email") as string;
 
-  useEffect(() => {
-    if (!token) { setStatus("error"); return; }
+  return (
+    <Card className="w-full max-w-md text-center">
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold">Verify your email</CardTitle>
+      </CardHeader>
 
-    api.get(`/auth/verify-email?token=${token}`)
-      .then(() => setStatus("success"))
-      .catch(() => setStatus("error"));
-  }, [token]);
+      <CardContent>
+        <div className="mb-6">
+          <p className="text-sm text-muted-foreground">
+            Enter the 6-digit code sent to
+          </p>
 
-  if (status === "loading") return <p>Verifying your email...</p>;
-  if (status === "success") return <p>Email verified! You can now log in.</p>;
-  return <p>Invalid or expired link. Request a new one.</p>;
+          <p className="font-medium">{email}</p>
+        </div>
+        <div className="flex items-center justify-center">
+          <EmailVerificationForm email={email} />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }

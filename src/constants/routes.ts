@@ -1,4 +1,5 @@
 export const PUBLIC_ROUTES = [
+  "/",
   "/login",
   "/register",
   "/forgot-password",
@@ -9,6 +10,8 @@ export const PUBLIC_ROUTES = [
 export const AUTH_ROUTES = [
   "/login",
   "/register",
+  "/forgot-password",
+  "/reset-password",
 ];
 
 export const PROTECTED_ROUTES = [

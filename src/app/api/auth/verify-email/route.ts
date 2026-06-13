@@ -1,19 +1,21 @@
-import { verifyEmailService } from "@/modules/auth/services/auth.services";
+import { handleApiError } from "@/lib/errors/handle-api-error";
+import { verifyEmailService } from "@/modules/auth/services/authService/verifyEmail.service";
 import { errorResponse, successResponse } from "@/utils/response";
 import { NextRequest } from "next/server";
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
     try {
-        const token = request.nextUrl.searchParams.get("token");
+        const {email, code} = await request.json();
+        console.log(email, code)
 
-        if(!token) {
-            return errorResponse("Verification token is required", null, 400);
+        if(!code) {
+            return errorResponse("Verification code is required", null, 400);
         }
 
-        const result = await verifyEmailService(token);
+        const result = await verifyEmailService(email, code);
 
         return successResponse(result.message, null, 200);
-    }catch (error: any) {
-        return errorResponse(error instanceof Error ? error.message : "Something went wrong", null, 500);
+    }catch (error) {
+        return handleApiError(error);
     }
 }

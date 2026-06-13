@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "../../helpers/sendVerificationEmail";
 import { createAuditLog } from "@/utils/audit-log";
 import { AuditEvent } from "@/generated/prisma/enums";
+
+
 export async function registerService(body: RegisterInput, requestInfo: { ipAddress: string, device: string }) {
     const validatedData = registerSchema.safeParse(body);
 
@@ -15,9 +17,9 @@ export async function registerService(body: RegisterInput, requestInfo: { ipAddr
 
     const { name, email, password } = validatedData.data;
     const hashedPassword = await argon.hash(password);
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    const hashedVerificationToken = hashToken(verificationToken);
-    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedVerificationCode = await argon.hash(verificationCode);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     const result =
         await prisma.$transaction(
@@ -43,19 +45,18 @@ export async function registerService(body: RegisterInput, requestInfo: { ipAddr
                         },
                     });
 
-                await tx.verificationToken.create({
+                await tx.verificationCode.create({
                     data: {
                         userId: user.id,
-                        token:
-                            hashedVerificationToken,
-                        expiresAt:
-                            tokenExpiry,
+                        codeHash:
+                            hashedVerificationCode,
+                        expiresAt
                     },
                 });
 
                 return {
                     user,
-                    verificationToken,
+                    verificationCode,
                 };
             },
             {
@@ -67,7 +68,7 @@ export async function registerService(body: RegisterInput, requestInfo: { ipAddr
 
     try {
         // Send verification email
-        await sendVerificationEmail(result.user.email, result.verificationToken);
+        await sendVerificationEmail(result.user.email, result.verificationCode);
         await createAuditLog({
             userId: result.user.id,
             event: AuditEvent.ACCOUNT_CREATED,

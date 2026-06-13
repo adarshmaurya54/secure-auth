@@ -32,100 +32,82 @@ const processQueue = (
 };
 
 api.interceptors.response.use(
-    (response) => response,
+  (response) => response,
 
-    async (error) => {
-        const originalRequest =
-            error.config;
+  async (error) => {
+    const originalRequest = error.config;
 
-        // if not 401 → reject
-        if (
-            error.response?.status !==
-            401
-        ) {
-            return Promise.reject(
-                error
-            );
-        }
+    const shouldRefresh = error.response?.status === 401 && !originalRequest._retry &&
+      ![
+        "/auth/login",
+        "/auth/register",
+        "/auth/verify-email",
+        "/auth/forgot-password",
+        "/auth/reset-password",
+      ].some((route) =>
+        originalRequest.url?.includes(
+          route
+        )
+      );
 
-        // stop infinite loop
-        if (
-            originalRequest._retry
-        ) {
-            return Promise.reject(
-                error
-            );
-        }
-
-        // never intercept refresh endpoint
-        if (
-            originalRequest.url?.includes(
-                "/auth/refresh"
-            )
-        ) {
-            return Promise.reject(
-                error
-            );
-        }
-
-        // queue pending requests
-        if (isRefreshing) {
-            return new Promise(
-                (resolve, reject) => {
-                    failedQueue.push({
-                        resolve: () =>
-                            resolve(
-                                api(
-                                    originalRequest
-                                )
-                            ),
-                        reject,
-                    });
-                }
-            );
-        }
-
-        originalRequest._retry =
-            true;
-
-        isRefreshing = true;
-
-        try {
-            console.log(
-                "refresh called"
-            );
-
-            await refreshApi.post(
-                "/auth/refresh"
-            );
-
-            processQueue();
-
-            // retry once only
-            return api(
-                originalRequest
-            );
-        } catch (
-        refreshError
-        ) {
-            processQueue(
-                refreshError
-            );
-
-            // redirect only if refresh fails
-            if (typeof window !== "undefined") {
-                if (window.location.pathname !=="/login") {
-                    window.location.replace(
-                        "/login"
-                    );
-                }
-            }
-
-            return Promise.reject(
-                refreshError
-            );
-        } finally {
-            isRefreshing = false;
-        }
+    // if refresh not needed
+    if (!shouldRefresh) {
+      return Promise.reject(
+        error
+      );
     }
+
+    // queue pending requests
+    if (isRefreshing) {
+      return new Promise(
+        (resolve, reject) => {
+          failedQueue.push({
+            resolve: () =>
+              resolve(
+                api(
+                  originalRequest
+                )
+              ),
+            reject,
+          });
+        }
+      );
+    }
+
+    originalRequest._retry = true;
+
+    isRefreshing = true;
+
+    try {
+      console.log("refresh called");
+
+      await refreshApi.post(
+        "/auth/refresh"
+      );
+
+      processQueue();
+
+      return api(
+        originalRequest
+      );
+    } catch (
+      refreshError
+    ) {
+      processQueue(
+        refreshError
+      );
+
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.replace(
+          "/login"
+        );
+      }
+
+      return Promise.reject(
+        refreshError
+      );
+    } finally {
+      isRefreshing = false;
+    }
+  }
 );

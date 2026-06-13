@@ -7,10 +7,7 @@ export default function AuthLayout({
     <main className="min-h-screen bg-background">
       <div className="container relative flex min-h-screen items-center justify-center px-4">
         {/* Background blur effect */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute left-[-10%] top-[10%] h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute right-[-10%] bottom-[10%] h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-background to-background" />
 
         {/* Auth Card Container */}
         <div className="relative z-10 w-full max-w-md">

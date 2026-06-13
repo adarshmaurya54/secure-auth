@@ -46,6 +46,24 @@ export async function findSessionBySessionId(sessionId: string){
     })
 }
 
+export async function deleteVerificationCodeByUserId(userId: string) {
+    return await prisma.verificationCode.deleteMany({
+        where: {
+            userId
+        }
+    })
+}
+
+export async function storeVerificationCode(userId: string, hashedVerificationCode: string, expiresAt: Date){
+    return await prisma.verificationCode.create({
+        data: {
+            userId,
+            codeHash: hashedVerificationCode,
+            expiresAt
+        }
+    })
+}
+
 export async function createUser(data: RegisterInput, tx?: tx) {
     const client = tx ?? prisma;
     return await client.user.create({
@@ -59,26 +77,6 @@ export async function createUser(data: RegisterInput, tx?: tx) {
         }
     })
 }
-
-export async function storeVerificationToken(userId: string, token: string, expiry: Date, tx?: tx) {
-    const client = tx ?? prisma;
-    return await client.verificationToken.create({
-        data: {
-            userId,
-            token,
-            expiresAt: expiry,
-        },
-    })
-}
-
-export async function deleteVerificationTokenByUserId(userId: string) {
-    return await prisma.verificationToken.deleteMany({
-        where: {
-            userId
-        }
-    })
-}
-
 
 export async function createSession(data: Prisma.SessionUncheckedCreateInput){
     return await prisma.session.create({

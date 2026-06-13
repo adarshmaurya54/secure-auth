@@ -16,11 +16,9 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { showApiError } from '@/lib/errors/toast-error'
+import { useRouter } from 'next/navigation'
 
 const RegisterForm = () => {
-    const [serverError, setServerError] = useState("");
-    const [submitted, setSubmitted] = useState(false);
-    const [submittedEmail, setSubmittedEmail] = useState("");
 
     const form = useForm<RegisterFormValues>({
         resolver: zodResolver(registerSchema),
@@ -33,47 +31,20 @@ const RegisterForm = () => {
         }
     })
     const password = form.watch("password");
+    const router = useRouter();
 
     const onSubmit = async (values: RegisterFormValues) => {
         try {
-            setServerError('');
-            await authService.register(values);
-            setSubmitted(true);
-            setSubmittedEmail(values.email);
+            const res = await authService.register(values);
+            if(res.success) {
+                toast.success(res.message);
+                router.replace(`/verify-email?email=${values.email}`)
+            }
         } catch (error) {
             showApiError(
                 error,
             );
         }
-    }
-
-    // Success UI
-    if (submitted) {
-        return (
-            <Card className="w-full border-0 shadow-none">
-                <CardContent className="pt-6">
-                    <div className="text-center space-y-4">
-                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                            <Mail className="h-8 w-8 text-muted-foreground" />
-                        </div>
-
-                        <div>
-                            <h2 className="text-2xl font-bold">
-                                Check your inbox
-                            </h2>
-
-                            <p className="text-muted-foreground mt-2">
-                                We sent a verification link to
-                            </p>
-
-                            <p className="font-medium mt-1">
-                                {submittedEmail}
-                            </p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        );
     }
 
     return (

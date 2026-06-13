@@ -48,19 +48,24 @@ export function AuthProvider({ children, }: { children: React.ReactNode; }) {
     }
   };
 
+
   useEffect(() => {
-    const isAuthPage = PUBLIC_ROUTES.some((route) =>
-      pathname.startsWith(route));
+    const isPublicPage =
+  pathname === "/" ||
+  PUBLIC_ROUTES.some(
+    (route) =>
+      route !== "/" &&
+      pathname.startsWith(route)
+  );
     // skip getMe on auth pages
-    if (isAuthPage) {
+    if (isPublicPage) {
       setLoading(false);
       return;
     }
     const initializeAuth = async () => {
       try {
         setLoading(true);
-        const user =
-          await authService.getMe();
+        const user = await authService.getMe();
         console.log("user - ", user)
         setUser(user);
       } catch {

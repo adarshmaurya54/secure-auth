@@ -6,7 +6,7 @@ import * as argon from "argon2"
 import { sendVerificationEmail } from "../helpers/sendVerificationEmail";
 import { createAuditLog } from "@/utils/audit-log";
 import { AccountStatus, AuditEvent, Role } from "@/generated/prisma/enums";
-import { createPasswordResetToken, createSession, deletePasswordResetTokenByUserId, deleteSessionByUserId, deleteVerificationTokenByUserId, findPasswordResetToken, findSessionByRefreshToken, findSessionBySessionId, findUserByEmail, findUserByUserId, revokeSessionByRefreshTokenHash, revokeSessionBySessionId, revokeSessionByUserId, storeVerificationToken, updateLastLogin, updateSessionBySessionId, updateUserPasswordByUserId } from "../repository/auth.repository";
+import { createPasswordResetToken, createSession, deletePasswordResetTokenByUserId, deleteSessionByUserId, findPasswordResetToken, findSessionByRefreshToken, findSessionBySessionId, findUserByEmail, findUserByUserId, revokeSessionByRefreshTokenHash, revokeSessionBySessionId, revokeSessionByUserId, updateLastLogin, updateSessionBySessionId, updateUserPasswordByUserId } from "../repository/auth.repository";
 import { generateAccessToken, generateRefreshToken, verifyAccessToken, verifyRefreshToken } from "../helpers/jwt";
 import { hashToken } from "../helpers/hash-token";
 import { cookies } from "next/headers";
@@ -20,59 +20,62 @@ import { handleApiError } from "@/lib/errors/handle-api-error";
 import { ApiError } from "@/lib/errors/api-error";
 import { COOKIE_NAMES } from "@/constants";
 
-export async function verifyEmailService(rawToken: string) {
-    if (!rawToken) {
-        throw new Error("Verification token is required");
-    }
-    const hashedToken = hashToken(rawToken)
-    const verificationToken = await prisma.verificationToken.findUnique({
-        where: { token: hashedToken },
-        include: {
-            user: true
-        }
-    })
+// export async function verifyEmailService(rawToken: string) {
+//     if (!rawToken) {
+//         throw new ApiError(200,"Verification token is required");
+//     }
+//     const hashedToken = hashToken(rawToken)
+//     const verificationToken = await prisma.verificationToken.findUnique({
+//         where: { token: hashedToken },
+//         include: {
+//             user: true
+//         }
+//     })
 
-    if (!verificationToken) {
-        throw new Error("Invalid verification token");
-    }
+//     if (!verificationToken) {
+//         throw new Error("Invalid verification token");
+//     }
 
-    if (verificationToken.expiresAt < new Date()) {
-        // cleanup expired token
-        await prisma.verificationToken.delete({
-            where: { id: verificationToken.id }
-        })
-        throw new Error("Verification token has expired");
-    }
+//     if (verificationToken.expiresAt < new Date()) {
+//         // cleanup expired token
+//         await prisma.verificationToken.delete({
+//             where: { id: verificationToken.id }
+//         })
+//         throw new Error("Verification token has expired");
+//     }
 
-    // already verified
-    if (verificationToken.user.isVerified) {
-        return {
-            success: true,
-            message: "Email is already verified"
-        }
-    }
+//     // already verified
+//     if (verificationToken.user.isVerified) {
+//         return {
+//             success: true,
+//             message: "Email is already verified"
+//         }
+//     }
 
-    await prisma.$transaction([
-        prisma.user.update({
-            where: { id: verificationToken.userId },
-            data: { isVerified: true }
-        }),
-        prisma.verificationToken.delete({
-            where: { id: verificationToken.id }
-        })
+//     await prisma.$transaction([
+//         prisma.user.update({
+//             where: { id: verificationToken.userId },
+//             data: { isVerified: true }
+//         }),
+//         prisma.verificationToken.delete({
+//             where: { id: verificationToken.id }
+//         })
 
-    ]);
+//     ]);
 
-    await createAuditLog({
-        userId: verificationToken.userId,
-        event: AuditEvent.EMAIL_VERIFIED,
-    })
+//     await createAuditLog({
+//         userId: verificationToken.userId,
+//         event: AuditEvent.EMAIL_VERIFIED,
+//     })
 
-    return {
-        success: true,
-        message: "Email verified successfully"
-    }
-}
+//     return {
+//         success: true,
+//         message: "Email verified successfully"
+//     }
+// }
+
+
+
 
 
 
@@ -83,7 +86,7 @@ export async function logoutFromCurrentOrAllDevicesService(device: string, reque
             cookieStore.get(COOKIE_NAMES.ACCESS_TOKEN)?.value;
 
         const refreshToken =
-            cookieStore.get( COOKIE_NAMES.REFRESH_TOKEN)?.value;
+            cookieStore.get(COOKIE_NAMES.REFRESH_TOKEN)?.value;
 
         if (!refreshToken) {
             const response = NextResponse.json({ success: true, message: "Already logout" }, { status: 200 })
@@ -181,7 +184,7 @@ export async function refreshTokenRotationService() {
     const refreshToken = cookieStore.get(COOKIE_NAMES.REFRESH_TOKEN)?.value;
 
     if (!refreshToken) {
-        throw new ApiError(401,"Unauthorized")
+        throw new ApiError(401, "Unauthorized")
     }
 
     const { sub } = verifyRefreshToken(refreshToken)
@@ -192,11 +195,11 @@ export async function refreshTokenRotationService() {
 
     if (!session) {
         await deleteSessionByUserId(sub);
-        throw new ApiError(401 , "Security issue detected. Login again.")
+        throw new ApiError(401, "Security issue detected. Login again.")
     }
 
     if (session.isRevoked) {
-        throw new ApiError(401,"Session not found")
+        throw new ApiError(401, "Session not found")
     }
 
     const newAccessToken = generateAccessToken(sub, session.id, user?.role ?? Role.USER)
@@ -295,37 +298,3 @@ export async function resetPasswordService(tokenHash: string, newPassword: strin
     return successResponse("Password reset successful. Please login.", null, 200)
 }
 
-export async function resendVerificationEmailService(email: string, requestInfo: { ipAddress: string, device: string }) {
-    const user = await findUserByEmail(email)
-    if (!user) {
-        return successResponse("If this email exists, a verification email has been sent.", null, 200);
-    }
-
-    if (user.isVerified) {
-        return errorResponse("Email is already verified", null, 400);
-    }
-
-    const cooldownKey = `email_cooldown:${user.id}:verification`;
-
-    await checkEmailCooldown(cooldownKey);
-
-    await deleteVerificationTokenByUserId(user.id);
-
-    //generate verification token
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    const hashedVerificationToken = hashToken(verificationToken);
-    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
-
-    await storeVerificationToken(user.id, hashedVerificationToken, tokenExpiry);
-
-    await sendVerificationEmail(user.email, verificationToken);
-    await setEmailCooldown(cooldownKey);
-    await createAuditLog({
-        userId: user.id,
-        event: AuditEvent.VERIFICATION_EMAIL_SENT,
-        ipAddress: requestInfo.ipAddress,
-        device: requestInfo.device,
-    })
-
-    return successResponse("If this email exists, a verification email has been sent.", null, 200);
-}

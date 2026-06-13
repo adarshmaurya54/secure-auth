@@ -59,7 +59,7 @@ model User {
 
   sessions              Session[]
   oauthAccounts         OAuthAccount[]
-  verificationTokens    VerificationToken[]
+  verificationCodes     VerificationCode[]
   passwordResetTokens   PasswordResetToken[]
   auditLogs             AuditLog[]
 }
@@ -93,14 +93,16 @@ model OAuthAccount {
   @@unique([provider, providerAccountId])
 }
 
-model VerificationToken {
+model VerificationCode {
   id          String   @id @default(uuid())
   userId      String
-  token       String   @unique
+  codeHash    String
   expiresAt   DateTime
   createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model PasswordResetToken {

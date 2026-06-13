@@ -1,4 +1,4 @@
-import { resendVerificationEmailService } from "@/modules/auth/services/auth.services";
+import { resendVerificationEmailService } from "@/modules/auth/services/authService/resendVerificationEmail.service";
 import { emailSchema } from "@/modules/auth/validators/auth.validators";
 import { errorResponse } from "@/utils/response";
 import { NextRequest } from "next/server";
