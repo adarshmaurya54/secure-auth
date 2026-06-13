@@ -23,7 +23,8 @@ export async function authenticate(
     if (!accessToken) {
         throw new ApiError(
             401,
-            "Unauthorized"
+            "Unauthorized",
+            "UNAUTHORIZED"
         );
     }
 
@@ -48,7 +49,8 @@ export async function authenticate(
     if (isBlacklisted) {
         throw new ApiError(
             401,
-            "Token revoked"
+            "Token revoked",
+            "SESSION_REVOKED"
         );
     }
 

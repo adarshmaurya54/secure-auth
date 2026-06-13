@@ -12,8 +12,6 @@ import type {
   User,
   AuthState,
 } from "@/types/auth.types";
-import { usePathname } from "next/navigation";
-import { PUBLIC_ROUTES } from "@/constants";
 
 const AuthContext =
   createContext<AuthState | null>(
@@ -23,8 +21,7 @@ const AuthContext =
 export function AuthProvider({ children, }: { children: React.ReactNode; }) {
   const [user, setUser] = useState<User | null>(null);
 
-  const [loading, setLoading] = useState(false);
-  const pathname = usePathname();
+  const [loading, setLoading] = useState(true);
 
   const login = async (
     email: string,
@@ -50,23 +47,9 @@ export function AuthProvider({ children, }: { children: React.ReactNode; }) {
 
 
   useEffect(() => {
-    const isPublicPage =
-  pathname === "/" ||
-  PUBLIC_ROUTES.some(
-    (route) =>
-      route !== "/" &&
-      pathname.startsWith(route)
-  );
-    // skip getMe on auth pages
-    if (isPublicPage) {
-      setLoading(false);
-      return;
-    }
     const initializeAuth = async () => {
       try {
-        setLoading(true);
         const user = await authService.getMe();
-        console.log("user - ", user)
         setUser(user);
       } catch {
         setUser(null);

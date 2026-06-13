@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ApiError } from "./api-error";
+import { clearAuthCookies } from "@/utils/cookies";
 
 export function handleApiError(
   error: unknown
@@ -11,24 +12,43 @@ export function handleApiError(
     (
       typeof error === "object" &&
       error !== null &&
-      "statusCode" in error &&
-      "message" in error
+      "statusCode" in error
     )
   ) {
     const apiError =
       error as ApiError;
 
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          apiError.message,
-      },
-      {
-        status:
-          apiError.statusCode,
-      }
-    );
+    const response =
+      NextResponse.json(
+        {
+          success: false,
+          message:
+            apiError.message,
+        },
+        {
+          status:
+            apiError.statusCode,
+        }
+      );
+      console.log("handle api error --------------------------------------------------------------")
+      // clear cookies only for dead sessions
+      if (
+        [
+          "SESSION_NOT_FOUND",
+          "SESSION_REVOKED",
+          "SESSION_INVALID",
+          "INVALID_REFRESH_TOKEN",
+        ].includes(
+          apiError.code ?? ""
+        )
+      ) {
+        console.log("clear cookie --------------------------------------------------------------")
+        clearAuthCookies(
+        response
+      );
+    }
+
+    return response;
   }
 
   return NextResponse.json(

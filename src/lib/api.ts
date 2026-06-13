@@ -1,34 +1,36 @@
+import { PUBLIC_ROUTES } from "@/constants";
 import axios from "axios";
 
 export const api = axios.create({
-    baseURL: "/api",
-    withCredentials: true,
+  baseURL: "/api",
+  withCredentials: true,
 });
 
 const refreshApi = axios.create({
-    baseURL: "/api",
-    withCredentials: true,
+  baseURL: "/api",
+  withCredentials: true,
 });
 
 let isRefreshing = false;
+let authFailed = false;
 
 let failedQueue: Array<{
-    resolve: () => void;
-    reject: (reason?: unknown) => void;
+  resolve: () => void;
+  reject: (reason?: unknown) => void;
 }> = [];
 
 const processQueue = (
-    error?: unknown
+  error?: unknown
 ) => {
-    failedQueue.forEach((promise) => {
-        if (error) {
-            promise.reject(error);
-        } else {
-            promise.resolve();
-        }
-    });
+  failedQueue.forEach((promise) => {
+    if (error) {
+      promise.reject(error);
+    } else {
+      promise.resolve();
+    }
+  });
 
-    failedQueue = [];
+  failedQueue = [];
 };
 
 api.interceptors.response.use(
@@ -55,6 +57,11 @@ api.interceptors.response.use(
       return Promise.reject(
         error
       );
+    }
+
+    // STOP infinite retries
+    if (authFailed) {
+      return Promise.reject(error);
     }
 
     // queue pending requests
@@ -84,28 +91,42 @@ api.interceptors.response.use(
       await refreshApi.post(
         "/auth/refresh"
       );
-
+      authFailed = false;
       processQueue();
 
       return api(
         originalRequest
       );
-    } catch (
-      refreshError
-    ) {
+    } catch (refreshError) {
+      authFailed = true;
+
       processQueue(
         refreshError
       );
 
-      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-        window.location.replace(
-          "/login"
-        );
+      if (typeof window !== "undefined") {
+        const pathname =
+          window.location.pathname;
+
+        const isPublicPage =
+          pathname === "/" ||
+          PUBLIC_ROUTES.some(
+            (route) =>
+              route !== "/" &&
+              pathname.startsWith(
+                route
+              )
+          );
+
+        // redirect only from protected pages
+        if (!isPublicPage) {
+          window.location.replace(
+            "/login"
+          );
+        }
       }
 
-      return Promise.reject(
-        refreshError
-      );
+      return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;
     }

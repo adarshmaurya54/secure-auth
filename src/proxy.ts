@@ -1,4 +1,3 @@
-
 // proxy.ts
 
 import {
@@ -8,7 +7,6 @@ import {
 
 import {
   AUTH_ROUTES,
-  PUBLIC_ROUTES,
   PROTECTED_ROUTES,
 } from "./constants";
 
@@ -23,19 +21,15 @@ export function proxy(
       "refresh_token"
     );
 
-  // exact auth route match
   const isAuthRoute =
-    AUTH_ROUTES.includes(
-      pathname
+    AUTH_ROUTES.some(
+      (route) =>
+        pathname === route ||
+        pathname.startsWith(
+          `${route}/`
+        )
     );
 
-  // exact public route match
-  const isPublicRoute =
-    PUBLIC_ROUTES.includes(
-      pathname
-    );
-
-  // protected route + nested routes
   const isProtectedRoute =
     PROTECTED_ROUTES.some(
       (route) =>
@@ -45,7 +39,7 @@ export function proxy(
         )
     );
 
-  // logged-in users shouldn't see auth pages
+  // logged in users cannot visit auth pages
   if (
     isAuthRoute &&
     hasRefreshToken
@@ -58,7 +52,7 @@ export function proxy(
     );
   }
 
-  // block protected pages
+  // protect private routes
   if (
     isProtectedRoute &&
     !hasRefreshToken
@@ -87,4 +81,3 @@ export const config = {
     "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };
-

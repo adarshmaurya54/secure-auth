@@ -184,7 +184,7 @@ export async function refreshTokenRotationService() {
     const refreshToken = cookieStore.get(COOKIE_NAMES.REFRESH_TOKEN)?.value;
 
     if (!refreshToken) {
-        throw new ApiError(401, "Unauthorized")
+        throw new ApiError(401, "Unauthorized", "UNAUTHORIZED")
     }
 
     const { sub } = verifyRefreshToken(refreshToken)
@@ -195,11 +195,11 @@ export async function refreshTokenRotationService() {
 
     if (!session) {
         await deleteSessionByUserId(sub);
-        throw new ApiError(401, "Security issue detected. Login again.")
+        throw new ApiError(401, "Security issue detected. Login again.", "SESSION_INVALID")
     }
 
     if (session.isRevoked) {
-        throw new ApiError(401, "Session not found")
+        throw new ApiError(401, "Session not found", "SESSION_NOT_FOUND")
     }
 
     const newAccessToken = generateAccessToken(sub, session.id, user?.role ?? Role.USER)
