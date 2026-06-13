@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {RegisterInput} from "@/modules/auth/validators/auth.validators"
+import { gt } from "zod";
 
 type tx = Prisma.TransactionClient;
 
@@ -112,7 +113,7 @@ export async function revokeSessionBySessionId(sessionId: string) {
     })
 }
 
-export async function revokeSessionByUserId(userId: string) {
+export async function revokeAllSessions(userId: string) {
     return await prisma.session.updateMany({
         where: {
             userId
@@ -187,3 +188,34 @@ export async function findPasswordResetToken(hashToken: string){
 }
 
 // -----------------------------------------
+
+
+export async function updateSessionActivity(sessionId: string) {
+    return await prisma.session.update({
+        where: {
+            id: sessionId
+        },
+        data: {
+            lastUsedAt: new Date()
+        }
+    })
+}
+
+
+export async function getUserSession(userId: string ) {
+    return await prisma.session.findMany({
+        where: {
+            userId,
+
+            isRevoked: false,
+
+            expiresAt: {
+                gt: new Date()
+            }
+        },
+
+        orderBy: {
+            lastUsedAt: "desc"
+        }
+    })
+}

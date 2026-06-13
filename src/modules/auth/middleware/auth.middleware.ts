@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { verifyAccessToken } from "../helpers/jwt";
 import { isTokenBlacklisted } from "../helpers/token-blacklist";
-import { findUserByUserId } from "../repository/auth.repository";
+import { findSessionBySessionId, findUserByUserId, updateSessionActivity } from "../repository/auth.repository";
 import { ApiError } from "@/lib/errors/api-error";
+import { AccountStatus } from "@/generated/prisma/enums";
 
 type JwtPayload = {
     sub: string;
@@ -54,6 +55,17 @@ export async function authenticate(
         );
     }
 
+    const session = await findSessionBySessionId(
+        payload.sessionId
+    );
+
+    if (!session || session.isRevoked) {
+        throw new ApiError(
+            401,
+            "Session expired"
+        );
+    }
+
     const user =
         await findUserByUserId(
             payload.sub
@@ -65,6 +77,9 @@ export async function authenticate(
             "User not found"
         );
     }
+    await updateSessionActivity(
+        payload.sessionId
+    );
 
     if (!user.isVerified) {
         throw new ApiError(
@@ -73,16 +88,19 @@ export async function authenticate(
         );
     }
 
-    if (
-        user.status !== "ACTIVE"
-    ) {
-        throw new ApiError(
-            403,
-            "Account suspended"
+    if (user.status === AccountStatus.SUSPENDED) {
+        throw new Error(
+            "Your account has been suspended"
         );
     }
 
-    return user;
+    if (user.status === AccountStatus.BANNED) {
+        throw new Error(
+            "Your account has been banned"
+        );
+    }
+
+    return { user, sessionId: payload.sessionId };
 }
 
 export function requireRole(

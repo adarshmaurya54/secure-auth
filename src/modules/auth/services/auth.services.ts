@@ -1,179 +1,18 @@
-import { prisma } from "@/lib/prisma";
-import { loginSchema, RegisterInput, registerSchema, passwordSchema } from "../validators/auth.validators";
+import { passwordSchema } from "../validators/auth.validators";
 import crypto from "crypto";
 
 import * as argon from "argon2"
-import { sendVerificationEmail } from "../helpers/sendVerificationEmail";
 import { createAuditLog } from "@/utils/audit-log";
-import { AccountStatus, AuditEvent, Role } from "@/generated/prisma/enums";
-import { createPasswordResetToken, createSession, deletePasswordResetTokenByUserId, deleteSessionByUserId, findPasswordResetToken, findSessionByRefreshToken, findSessionBySessionId, findUserByEmail, findUserByUserId, revokeSessionByRefreshTokenHash, revokeSessionBySessionId, revokeSessionByUserId, updateLastLogin, updateSessionBySessionId, updateUserPasswordByUserId } from "../repository/auth.repository";
-import { generateAccessToken, generateRefreshToken, verifyAccessToken, verifyRefreshToken } from "../helpers/jwt";
+import { AuditEvent, Role } from "@/generated/prisma/enums";
+import { createPasswordResetToken, deletePasswordResetTokenByUserId, deleteSessionByUserId, findPasswordResetToken, findSessionByRefreshToken, findSessionBySessionId, findUserByEmail, findUserByUserId, revokeAllSessions, revokeSessionBySessionId,  updateSessionBySessionId, updateUserPasswordByUserId } from "../repository/auth.repository";
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../helpers/jwt";
 import { hashToken } from "../helpers/hash-token";
 import { cookies } from "next/headers";
-import { clearAuthCookies } from "@/utils/cookies";
-import { NextResponse } from "next/server";
-import { blacklistToken } from "../helpers/token-blacklist";
 import { errorResponse, successResponse } from "@/utils/response";
 import { sendResetPasswordEmail } from "../helpers/sendResetPasswordEmail";
 import { checkEmailCooldown, setEmailCooldown } from "../helpers/email-cooldown";
-import { handleApiError } from "@/lib/errors/handle-api-error";
 import { ApiError } from "@/lib/errors/api-error";
 import { COOKIE_NAMES } from "@/constants";
-
-// export async function verifyEmailService(rawToken: string) {
-//     if (!rawToken) {
-//         throw new ApiError(200,"Verification token is required");
-//     }
-//     const hashedToken = hashToken(rawToken)
-//     const verificationToken = await prisma.verificationToken.findUnique({
-//         where: { token: hashedToken },
-//         include: {
-//             user: true
-//         }
-//     })
-
-//     if (!verificationToken) {
-//         throw new Error("Invalid verification token");
-//     }
-
-//     if (verificationToken.expiresAt < new Date()) {
-//         // cleanup expired token
-//         await prisma.verificationToken.delete({
-//             where: { id: verificationToken.id }
-//         })
-//         throw new Error("Verification token has expired");
-//     }
-
-//     // already verified
-//     if (verificationToken.user.isVerified) {
-//         return {
-//             success: true,
-//             message: "Email is already verified"
-//         }
-//     }
-
-//     await prisma.$transaction([
-//         prisma.user.update({
-//             where: { id: verificationToken.userId },
-//             data: { isVerified: true }
-//         }),
-//         prisma.verificationToken.delete({
-//             where: { id: verificationToken.id }
-//         })
-
-//     ]);
-
-//     await createAuditLog({
-//         userId: verificationToken.userId,
-//         event: AuditEvent.EMAIL_VERIFIED,
-//     })
-
-//     return {
-//         success: true,
-//         message: "Email verified successfully"
-//     }
-// }
-
-
-
-
-
-
-export async function logoutFromCurrentOrAllDevicesService(device: string, requestInfo: { ipAddress: string, device: string }) {
-    try {
-        const cookieStore = await cookies();
-        const accessToken =
-            cookieStore.get(COOKIE_NAMES.ACCESS_TOKEN)?.value;
-
-        const refreshToken =
-            cookieStore.get(COOKIE_NAMES.REFRESH_TOKEN)?.value;
-
-        if (!refreshToken) {
-            const response = NextResponse.json({ success: true, message: "Already logout" }, { status: 200 })
-            clearAuthCookies(response);
-            return response;
-        }
-
-        // verify access token
-        const accessPayload = verifyAccessToken(accessToken!);
-        let responseMsg = "Logout successfully"
-        if (device === "CURRENT") {
-            console.log("Logout -current")
-            await revokeSessionByRefreshTokenHash(hashToken(refreshToken))
-            console.log("revoked")
-        } else if (device === "ALL") {
-            await revokeSessionByUserId(accessPayload.sub)
-            responseMsg = "You logged out from all devices."
-        }
-
-        // calculating ramaining expiry
-
-        const currentTime = Math.floor(Date.now() / 1000);
-
-        const ttl = accessPayload.exp - currentTime;
-
-        // blacklist token
-        if (ttl > 0) {
-
-            await blacklistToken(accessPayload.jti, ttl)
-        }
-
-        await createAuditLog({
-            userId: accessPayload.sub,
-            event: AuditEvent.LOGOUT,
-            ipAddress: requestInfo.ipAddress,
-            device: requestInfo.device,
-            metadata: {
-                logout: device === "CURRENT" ? "Logged out from current device" : "Logged out from all devices"
-            }
-        })
-
-        const response = NextResponse.json({
-            success: true,
-            message: responseMsg,
-        }, { status: 200 })
-
-        clearAuthCookies(response);
-
-        return response;
-    } catch (err) {
-        return handleApiError(err);
-    }
-
-}
-
-export async function logoutFromSpecificDeviceService(sessionId: string, userId: string, requestInfo: { device: string, ipAddress: string }) {
-    const session = await findSessionBySessionId(sessionId);
-
-    if (!session) {
-        throw new Error('Session not found')
-    }
-
-    if (session.isRevoked) {
-        throw new Error('Already logged out')
-    }
-
-    // Security check
-    if (session.userId !== userId) {
-        throw new Error("Unauthorized")
-    }
-
-    await revokeSessionBySessionId(session.id)
-
-    await createAuditLog({
-        userId,
-        event: AuditEvent.LOGOUT,
-        ipAddress: requestInfo.ipAddress,
-        device: requestInfo.device,
-        metadata: {
-            logout: "Logout from device " + requestInfo.device,
-        }
-    })
-
-    return {
-        message: "Device logged out successfully"
-    }
-}
 
 
 
@@ -284,7 +123,7 @@ export async function resetPasswordService(tokenHash: string, newPassword: strin
     await updateUserPasswordByUserId(token.user.id, hashNewPassword);
 
     // revoke all devices sessions
-    await revokeSessionByUserId(token.user.id);
+    await revokeAllSessions(token.user.id);
 
     // delete the password reset token
     await deletePasswordResetTokenByUserId(token.user.id);

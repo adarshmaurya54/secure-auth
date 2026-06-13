@@ -68,13 +68,19 @@ model User {
 model Session {
   id                 String   @id @default(uuid())
   userId             String
+
   device             String?
   browser            String?
+  os                 String? // Windows, Android, Mac
   ipAddress          String?
+
   refreshTokenHash   String   @unique
+
   expiresAt          DateTime
   isRevoked          Boolean  @default(false)
+
   createdAt          DateTime @default(now())
+  lastUsedAt         DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

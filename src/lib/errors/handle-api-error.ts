@@ -30,7 +30,6 @@ export function handleApiError(
             apiError.statusCode,
         }
       );
-      console.log("handle api error --------------------------------------------------------------")
       // clear cookies only for dead sessions
       if (
         [
@@ -42,7 +41,6 @@ export function handleApiError(
           apiError.code ?? ""
         )
       ) {
-        console.log("clear cookie --------------------------------------------------------------")
         clearAuthCookies(
         response
       );

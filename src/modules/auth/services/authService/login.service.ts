@@ -15,6 +15,7 @@ type LoginRequestInfo = {
     ipAddress: string;
     device: string;
     browser: string;
+    os: string
 }
 export async function loginService(body: LoginInput, requestInfo: LoginRequestInfo) {
     // zod validation for body
@@ -79,10 +80,15 @@ export async function loginService(body: LoginInput, requestInfo: LoginRequestIn
     const session = await createSession({
         userId: user.id,
         refreshTokenHash,
+
         ipAddress: requestInfo.ipAddress,
         device: requestInfo.device,
         browser: requestInfo.browser,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+        os: requestInfo.os,
+
+        expiresAt: new Date(
+            Date.now() + 30 * 24 * 60 * 60 * 1000
+        )
     })
     const accessToken = generateAccessToken(user.id, session.id, user.role);
 

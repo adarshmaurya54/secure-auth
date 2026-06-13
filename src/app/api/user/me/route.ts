@@ -5,10 +5,9 @@ import { NextRequest } from "next/server";
 
 export async function GET(req: NextRequest) {
     try {
-        console.log("me api")
-        const user = await authenticate(req);
+        const auth = await authenticate(req);
 
-        return successResponse("Profile fetched", user, 200)
+        return successResponse("Profile fetched", auth.user, 200)
 
     } catch (error) {
         return handleApiError(

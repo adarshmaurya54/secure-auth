@@ -1,3 +1,5 @@
+import { getDeviceInfo } from "@/modules/auth/helpers/device-info";
+import { getIpAddress } from "@/modules/auth/helpers/ip-address";
 import { loginRateLimiter } from "@/modules/auth/helpers/rate-limit";
 import { rateLimit } from "@/modules/auth/helpers/rate-limit-helper";
 import { loginService } from "@/modules/auth/services/authService/login.service";
@@ -7,17 +9,19 @@ import { NextRequest } from "next/server";
 
 export async function POST(req: NextRequest){
     try{
-        const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+        const deviceInfo = getDeviceInfo(req);
+        const ipAddress = getIpAddress(req);
 
-        await rateLimit(loginRateLimiter, ip);
-        console.log("POST login API CALLED")
+        await rateLimit(loginRateLimiter, ipAddress);
+        
         const body = await req.json();
         const result = await loginService(
             body,
             {
-                ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
-                device: req.headers.get("user-agent") ?? "unknown",
-                browser: req.headers.get("user-agent") ?? "unknown"
+                ipAddress,
+                device: deviceInfo.device,
+                browser: deviceInfo.browser,
+                os: deviceInfo.os
             }
         )
 
@@ -31,6 +35,7 @@ export async function POST(req: NextRequest){
 
         return response;
     }catch(error){
+        console.log(error instanceof Error ? error.message : "")
         return errorResponse(error instanceof Error ? error.message : "Something went wrong", null, 500)
     }
 }
