@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { showApiError } from '@/lib/errors/toast-error'
 import { useRouter } from 'next/navigation'
+import { GoogleLoginButton } from '../shared/GoogleLoginButton'
 
 const RegisterForm = () => {
 
@@ -36,7 +37,7 @@ const RegisterForm = () => {
     const onSubmit = async (values: RegisterFormValues) => {
         try {
             const res = await authService.register(values);
-            if(res.success) {
+            if (res.success) {
                 toast.success(res.message);
                 router.replace(`/verify-email?email=${values.email}`)
             }
@@ -49,7 +50,7 @@ const RegisterForm = () => {
 
     return (
         <Card className="w-full">
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 space-y-4">
                 <div className="mb-6 text-center">
                     <h1 className="text-2xl font-bold">
                         Create an account
@@ -58,6 +59,20 @@ const RegisterForm = () => {
                     <p className="text-muted-foreground mt-1">
                         Enter your details to get started
                     </p>
+                </div>
+                <div className="space-y-4">
+                    <GoogleLoginButton />
+
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">
+                                or register with email
+                            </span>
+                        </div>
+                    </div>
                 </div>
                 <Form {...form}>
                     <form

@@ -5,6 +5,9 @@ export const PUBLIC_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
+  "/oauth-success",
+  "/api/auth/oauth/google",          
+  "/api/auth/oauth/google/callback", 
 ];
 
 export const AUTH_ROUTES = [
@@ -12,6 +15,7 @@ export const AUTH_ROUTES = [
   "/register",
   "/forgot-password",
   "/reset-password",
+  "/oauth-success", 
 ];
 
 export const PROTECTED_ROUTES = [

@@ -1,23 +1,40 @@
-import { LoginForm } from '@/components/auth/LoginForm'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import React from 'react'
+"use client";
 
-function page() {
-    return (
-        <div className="min-h-screen flex items-center justify-center px-4">
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    <CardTitle className="text-center text-2xl">
-                        Sign In
-                    </CardTitle>
-                </CardHeader>
+import { LoginForm } from "@/components/auth/LoginForm";
+import { GoogleLoginButton } from "@/components/shared/GoogleLoginButton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-                <CardContent>
-                    <LoginForm />
-                </CardContent>
-            </Card>
-        </div>
-    )
+export default function Page() {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-center text-2xl">Sign In</CardTitle>
+          <p className="text-center text-sm text-muted-foreground mt-1">
+            Welcome back! Please enter your details.
+          </p>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Google OAuth — prominent at top */}
+          <GoogleLoginButton />
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                or continue with email
+              </span>
+            </div>
+          </div>
+
+          {/* Credentials form */}
+          <LoginForm />
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
-
-export default page
