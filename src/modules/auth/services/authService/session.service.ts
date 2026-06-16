@@ -1,10 +1,26 @@
+import { redis } from "@/lib/redis";
 import { getUserSession } from "../../repository/auth.repository";
 import { formatDistanceToNow } from "date-fns";
 
 export async function getUserSessionsService(userId: string, currentSessionId: string) {
+    const cacheKey = `sessions:${userId}`;
+
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+        console.log("returned cached values")
+        const sessions = JSON.parse(cached);
+        // re-apply isCurrent dynamically
+        return sessions.map((s: any) => ({
+            ...s,
+            isCurrent: s.id === currentSessionId,
+        }));
+    }
+
+    // db called
     const sessions = await getUserSession(userId);
 
-    return sessions.map((session) => ({
+
+    const formattedSession = sessions.map((session) => ({
         id: session.id,
 
         deviceName:
@@ -33,4 +49,8 @@ export async function getUserSessionsService(userId: string, currentSessionId: s
         isCurrent:
             session.id === currentSessionId,
     }));
+
+    await redis.set(cacheKey, JSON.stringify(formattedSession), "EX", 60 * 5)
+
+    return formattedSession;
 }

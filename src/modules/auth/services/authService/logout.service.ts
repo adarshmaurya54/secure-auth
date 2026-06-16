@@ -1,15 +1,11 @@
-import { COOKIE_NAMES } from "@/constants";
-import { clearAuthCookies } from "@/utils/cookies";
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
 import { verifyAccessToken } from "../../helpers/jwt";
 import { hashToken } from "../../helpers/hash-token";
 import { findSessionBySessionId, revokeAllSessions, revokeSessionByRefreshTokenHash, revokeSessionBySessionId } from "../../repository/auth.repository";
 import { blacklistToken } from "../../helpers/token-blacklist";
 import { createAuditLog } from "@/utils/audit-log";
 import { AuditEvent } from "@/generated/prisma/enums";
-import { handleApiError } from "@/lib/errors/handle-api-error";
 import { ApiError } from "next/dist/server/api-utils";
+import { redis } from "@/lib/redis";
 
 export async function logoutCurrentDeviceService(accessToken: string, refreshToken: string,
     requestInfo: {
@@ -34,6 +30,9 @@ export async function logoutCurrentDeviceService(accessToken: string, refreshTok
             ttl
         );
     }
+    await redis.del(`sessions:${accessPayload.sub}`);
+    // in your revokeSession service
+    await redis.del(`session:${accessPayload.sessionId}`);
 
     await createAuditLog({
         userId: accessPayload.sub,
@@ -49,7 +48,7 @@ export async function logoutCurrentDeviceService(accessToken: string, refreshTok
     });
 }
 
-export async function logoutAllDevicesService(userId: string,accessToken: string) {
+export async function logoutAllDevicesService(userId: string, accessToken: string) {
     const accessPayload = verifyAccessToken(accessToken);
 
     await revokeAllSessions(userId);
@@ -64,6 +63,9 @@ export async function logoutAllDevicesService(userId: string,accessToken: string
             ttl
         );
     }
+    await redis.del(`sessions:${accessPayload.sub}`);
+    // in your revokeSession service
+    await redis.del(`session:${accessPayload.sessionId}`);
 
     await createAuditLog({
         userId,
@@ -97,6 +99,10 @@ export async function logoutFromSpecificDeviceService(targetSessionId: string, c
     }
 
     await revokeSessionBySessionId(session.id);
+    await redis.del(`sessions:${userId}`);
+    // in your revokeSession service
+    await redis.del(`session:${session.id}`);
+
 
     await createAuditLog({
         userId,

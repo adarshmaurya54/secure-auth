@@ -5,6 +5,7 @@ import { AccountStatus, AuditEvent } from "@/generated/prisma/enums";
 import * as argon from "argon2"
 import { generateAccessToken, generateRefreshToken } from "../../helpers/jwt";
 import { hashToken } from "../../helpers/hash-token";
+import { redis } from "@/lib/redis";
 
 type LoginInput = {
     email: string;
@@ -94,6 +95,8 @@ export async function loginService(body: LoginInput, requestInfo: LoginRequestIn
 
     // udpate last login
     await updateLastLogin(user.id);
+    const r = await redis.del(`sessions:${user.id}`);
+    console.log("redis key deleted", r);
 
     await createAuditLog({
         userId: user.id,

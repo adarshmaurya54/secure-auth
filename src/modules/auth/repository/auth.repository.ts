@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { redis } from "@/lib/redis";
 import {RegisterInput} from "@/modules/auth/validators/auth.validators"
 import { gt } from "zod";
 
@@ -12,7 +13,12 @@ export async function findUserByEmail(email: string, tx?: tx) {
     })
 }
 export async function findUserByUserId(userId: string) {
-    return await prisma.user.findUnique({
+    const cacheKey = `user:${userId}`;
+
+    const cached = await redis.get(cacheKey);
+    if(cached) return JSON.parse(cached);
+
+    const user = await prisma.user.findUnique({
         where: {id: userId},
         select: {
             id: true,
@@ -25,6 +31,12 @@ export async function findUserByUserId(userId: string) {
             updatedAt: true,
         },
     })
+
+    if(user) {
+        await redis.set(cacheKey, JSON.stringify(user), "EX", 60 * 15);
+    }
+
+    return user;
 }
 
 export async function updateUserPasswordByUserId(userId: string, hashPassword: string){
@@ -40,11 +52,20 @@ export async function updateUserPasswordByUserId(userId: string, hashPassword: s
 
 
 export async function findSessionBySessionId(sessionId: string){
-    return await prisma.session.findUnique({
+    const cacheKey = `session:${sessionId}`;
+    const cached = await redis.get(cacheKey);
+    if(cached) return JSON.parse(cached);
+
+    const session = await prisma.session.findUnique({
         where: {
             id: sessionId
         }
     })
+    if(session) {
+        await redis.set(cacheKey, JSON.stringify(session), "EX", 60 * 15);
+    }
+
+    return session;
 }
 
 export async function deleteVerificationCodeByUserId(userId: string) {
@@ -191,7 +212,13 @@ export async function findPasswordResetToken(hashToken: string){
 
 
 export async function updateSessionActivity(sessionId: string) {
-    return await prisma.session.update({
+    const debounceKey = `session-activity-updated:${sessionId}`;
+
+    //Only update DB if not updated in last 5 minutes
+    const alreadyUpdated = await redis.get(debounceKey);
+    if(alreadyUpdated) return; // skip db write
+    
+    await prisma.session.update({
         where: {
             id: sessionId
         },
@@ -199,6 +226,8 @@ export async function updateSessionActivity(sessionId: string) {
             lastUsedAt: new Date()
         }
     })
+
+    await redis.set(debounceKey, "1", "EX", 60 * 5);
 }
 
 

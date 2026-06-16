@@ -66,10 +66,7 @@ export async function authenticate(
         );
     }
 
-    const user =
-        await findUserByUserId(
-            payload.sub
-        );
+    const user = await findUserByUserId(payload.sub);
 
     if (!user) {
         throw new ApiError(
@@ -77,9 +74,7 @@ export async function authenticate(
             "User not found"
         );
     }
-    await updateSessionActivity(
-        payload.sessionId
-    );
+    await updateSessionActivity(payload.sessionId);
 
     if (!user.isVerified) {
         throw new ApiError(
