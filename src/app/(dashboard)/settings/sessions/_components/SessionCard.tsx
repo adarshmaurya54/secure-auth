@@ -51,7 +51,7 @@ export function SessionCard({ session, isRevoking, onRevoke }: SessionCardProps)
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold text-sm">
-                {session.browser ?? "Unknown Browser"} on {session.deviceName}
+                {session.deviceName}
               </h3>
 
               {session.isCurrent && (

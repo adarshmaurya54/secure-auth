@@ -6,7 +6,6 @@ import { NextRequest } from "next/server";
 export async function POST(request: NextRequest) {
     try {
         const {email, code} = await request.json();
-        console.log(email, code)
 
         if(!code) {
             return errorResponse("Verification code is required", null, 400);

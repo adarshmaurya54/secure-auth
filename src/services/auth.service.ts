@@ -33,4 +33,8 @@ export const authService = {
         const {data} = await api.post("/auth/resend-verification", {email});
         return data;
     },
+    async changePassword(data: {currentPassword: string, newPassword: string}) {
+        const res = await api.post("/auth/change-password", data)
+        return res.data
+    }
 };

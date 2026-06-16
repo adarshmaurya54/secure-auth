@@ -63,10 +63,6 @@ export async function loginService(body: LoginInput, requestInfo: LoginRequestIn
         throw new Error("Invalid email or password");
     }
 
-    if (!user.isVerified) {
-        throw new Error("Email is not verified, please check your inbox for verification email");
-    }
-
     if (user.status === AccountStatus.SUSPENDED || user.status === AccountStatus.BANNED) {
         throw new Error("Your account is suspended or banned, please contact support for more information");
     }

@@ -76,12 +76,12 @@ export async function authenticate(
     }
     await updateSessionActivity(payload.sessionId);
 
-    if (!user.isVerified) {
-        throw new ApiError(
-            403,
-            "Please verify your email"
-        );
-    }
+    // if (!user.isVerified) {
+    //     throw new ApiError(
+    //         403,
+    //         "Please verify your email"
+    //     );
+    // }
 
     if (user.status === AccountStatus.SUSPENDED) {
         throw new Error(

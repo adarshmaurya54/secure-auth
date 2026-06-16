@@ -114,35 +114,77 @@ export async function updateLastLogin(userId: string) {
 }
 
 export async function revokeSessionByRefreshTokenHash(refreshTokenHash: string) {
-    return await prisma.session.update({
-        where: {
-            refreshTokenHash
-        },
-        data: {
-            isRevoked: true
-        }
-    })
+    const session = await prisma.session.update({
+        where: { refreshTokenHash },
+        data: { isRevoked: true },
+    });
+
+    // clean Redis
+    await redis.del(`session:${session.id}`);
+
+    return session;
 }
+
 export async function revokeSessionBySessionId(sessionId: string) {
-    return await prisma.session.update({
-        where: {
-            id: sessionId
-        },
-        data: {
-            isRevoked: true
-        }
-    })
+    const session = await prisma.session.update({
+        where: { id: sessionId },
+        data: { isRevoked: true },
+    });
+
+    // clean Redis
+    await redis.del(`session:${session.id}`);
+
+    return session;
 }
 
 export async function revokeAllSessions(userId: string) {
-    return await prisma.session.updateMany({
+    // 1. fetch IDs FIRST before revoking
+    const sessions = await prisma.session.findMany({
+        where: { userId, isRevoked: false },
+        select: { id: true },
+    });
+
+    // 2. revoke in DB
+    await prisma.session.updateMany({
+        where: { userId },
+        data: { isRevoked: true },
+    });
+
+    // 3. clean Redis for each session
+    await Promise.all(
+        sessions.map((s) => redis.del(`session:${s.id}`))
+    );
+
+    // 4. clean user cache too
+    await redis.del(`user:${userId}`);
+    await redis.del(`sessions:${userId}`);
+}
+
+// revoke all sessions except current
+export async function revokeAllSessionsExcept(userId: string, keepSessionId: string) {
+    // fetch all OTHER session IDs first (for Redis cleanup)
+    const sessions = await prisma.session.findMany({
         where: {
-            userId
+            userId,
+            id: { not: keepSessionId },
+            isRevoked: false,
         },
-        data: {
-            isRevoked: true
-        }
-    })
+        select: { id: true },
+    });
+
+    // revoke in DB
+    await prisma.session.updateMany({
+        where: {
+            userId,
+            id: { not: keepSessionId },
+        },
+        data: { isRevoked: true },
+    });
+
+    // clean up Redis for each revoked session
+    await Promise.all(
+        sessions.map((s) => redis.del(`session:${s.id}`))
+    );
 }
 
 

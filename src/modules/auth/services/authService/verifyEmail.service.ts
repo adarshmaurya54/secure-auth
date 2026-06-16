@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import * as argon from "argon2"
 import { createAuditLog } from "@/utils/audit-log";
 import { AuditEvent } from "@/generated/prisma/enums";
+import { redis } from "@/lib/redis";
 
 export async function verifyEmailService(email: string, code: string) {
     if (!email || !code) {
@@ -89,6 +90,9 @@ export async function verifyEmailService(email: string, code: string) {
         userId: user.id,
         event: AuditEvent.EMAIL_VERIFIED,
     });
+
+    await redis.del(`user:${user.id}`);
+    await redis.del(`sessions:${user.id}`);
 
     return {
         success: true,
