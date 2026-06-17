@@ -1,8 +1,9 @@
-"use client";
-
 import { LoginForm } from "@/components/auth/LoginForm";
+import LoginSkeleton from "@/components/login-skeleton";
 import { GoogleLoginButton } from "@/components/shared/GoogleLoginButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageLoader } from "@/components/ui/page-loader";
+import { Suspense } from "react";
 
 export default function Page() {
   return (
@@ -17,7 +18,9 @@ export default function Page() {
 
         <CardContent className="space-y-4">
           {/* Google OAuth — prominent at top */}
-          <GoogleLoginButton />
+          <Suspense fallback={<PageLoader />}>
+            <GoogleLoginButton />
+          </Suspense>
 
           {/* Divider */}
           <div className="relative">
@@ -32,7 +35,9 @@ export default function Page() {
           </div>
 
           {/* Credentials form */}
-          <LoginForm />
+          <Suspense fallback={<LoginSkeleton />}>
+            <LoginForm />
+          </Suspense>
         </CardContent>
       </Card>
     </div>

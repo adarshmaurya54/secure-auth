@@ -15,6 +15,8 @@ import Link from 'next/link'
 import { showApiError } from '@/lib/errors/toast-error'
 import { useRouter } from 'next/navigation'
 import { GoogleLoginButton } from '../shared/GoogleLoginButton'
+import { Suspense } from 'react'
+import { PageLoader } from '../ui/page-loader'
 
 const RegisterForm = () => {
 
@@ -58,7 +60,9 @@ const RegisterForm = () => {
                     </p>
                 </div>
                 <div className="space-y-4">
+                    <Suspense fallback={<PageLoader/>}>
                     <GoogleLoginButton />
+                    </Suspense>
 
                     <div className="relative">
                         <div className="absolute inset-0 flex items-center">

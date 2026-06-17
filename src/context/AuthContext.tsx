@@ -19,7 +19,6 @@ const AuthContext =
     null
   );
 
-const PUBLIC_ROUTES = ["/", "/about", "/contact"];
 
 export function AuthProvider({ children, }: { children: React.ReactNode; }) {
   const [user, setUser] = useState<User | null>(null);
@@ -53,11 +52,6 @@ export function AuthProvider({ children, }: { children: React.ReactNode; }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Skip fetching user on public routes
-        if (PUBLIC_ROUTES.includes(pathname)) {
-          setLoading(false);
-          return;
-        }
         const user = await authService.getMe();
         setUser(user);
       } catch {

@@ -1,6 +1,7 @@
 import ResetPasswordForm from '@/components/auth/ResetPasswordForm'
 import { Card, CardContent } from '@/components/ui/card'
-import React from 'react'
+import { PageLoader } from '@/components/ui/page-loader'
+import { Suspense } from 'react'
 
 function ResetPasswordPage() {
     return (
@@ -15,7 +16,9 @@ function ResetPasswordPage() {
                         Reset your password
                     </p>
                 </div>
-                <ResetPasswordForm />
+                <Suspense fallback={<PageLoader/>}>
+                    <ResetPasswordForm />
+                </Suspense>
             </CardContent>
         </Card>
     )
