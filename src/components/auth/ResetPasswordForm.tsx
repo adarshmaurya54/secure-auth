@@ -2,7 +2,6 @@
 import { showApiError } from '@/lib/errors/toast-error'
 import { resetPasswordSchema, ResetPasswordValues } from '@/schemas/auth.schema'
 import { zodResolver } from '@hookform/resolvers/zod'
-import React from 'react'
 import { useForm } from 'react-hook-form'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form'
 import { PasswordInput } from './PasswordInput'

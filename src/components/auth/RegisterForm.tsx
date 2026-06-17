@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from 'react'
+
 import { Card, CardContent } from '../ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form'
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -9,10 +9,7 @@ import { PasswordStrengthBar } from './PasswordStrengthBar'
 import { Button } from '../ui/button'
 import { useForm } from 'react-hook-form'
 import { RegisterFormValues, registerSchema } from '@/schemas/auth.schema'
-import { FormError } from '../shared/FormError'
-import { Mail } from 'lucide-react'
 import { authService } from '@/services/auth.service'
-import axios from 'axios'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { showApiError } from '@/lib/errors/toast-error'

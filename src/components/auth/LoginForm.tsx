@@ -9,8 +9,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "../ui/input";
 import Link from "next/link";
 import { Button } from "../ui/button";
-import axios from "axios";
-import { toast } from "sonner";
 import { PasswordInput } from "./PasswordInput";
 import { showApiError } from "@/lib/errors/toast-error";
 

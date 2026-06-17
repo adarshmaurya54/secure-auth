@@ -1,7 +1,6 @@
 import { handleApiError } from "@/lib/errors/handle-api-error";
 import { refreshTokenRotationService } from "@/modules/auth/services/auth.services";
-import { clearAuthCookies, setAuthCookies } from "@/utils/cookies";
-import { errorResponse } from "@/utils/response";
+import { setAuthCookies } from "@/utils/cookies";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest){

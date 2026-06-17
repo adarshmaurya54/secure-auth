@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleGoogleLogin } from "@/modules/auth/services/authService/oauth.service";
-import { handleApiError } from "@/lib/errors/handle-api-error";
 
 export async function GET(request: NextRequest) {
   try {

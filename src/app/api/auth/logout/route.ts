@@ -8,7 +8,7 @@ import { logoutCurrentDeviceService } from "@/modules/auth/services/authService/
 import { clearAuthCookies } from "@/utils/cookies";
 import { successResponse } from "@/utils/response";
 import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
     try {

@@ -1,12 +1,10 @@
 import { COOKIE_NAMES } from "@/constants";
 import { handleApiError } from "@/lib/errors/handle-api-error";
 import { verifyAccessToken } from "@/modules/auth/helpers/jwt";
-import { authenticate } from "@/modules/auth/middleware/auth.middleware";
 import { logoutAllDevicesService } from "@/modules/auth/services/authService/logout.service";
 import { clearAuthCookies } from "@/utils/cookies";
 import { successResponse } from "@/utils/response";
 import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
 
 export async function POST() {
     try {

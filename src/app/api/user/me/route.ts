@@ -1,6 +1,6 @@
 import { handleApiError } from "@/lib/errors/handle-api-error";
 import { authenticate } from "@/modules/auth/middleware/auth.middleware";
-import { errorResponse, successResponse } from "@/utils/response";
+import { successResponse } from "@/utils/response";
 import { NextRequest } from "next/server";
 
 export async function GET(req: NextRequest) {

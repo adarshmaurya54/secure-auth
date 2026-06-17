@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
-import { AuthProvider } from "@/context/AuthContext";
 import { Providers } from "./Providers";
 
 const geistSans = Geist({
@@ -17,7 +16,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Authentication System",
-  description: "Secure authentication system",
+  description: "Secure Authentication System",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({
