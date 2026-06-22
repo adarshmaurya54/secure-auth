@@ -27,7 +27,6 @@ export async function GET(request: NextRequest) {
 
     // Step B: Get user info from Google
     const googleUser = await getGoogleUserInfo(tokens.access_token);
-    console.log(googleUser)
 
     // Step C: Run your existing service (no changes needed!)
     const response = NextResponse.redirect(

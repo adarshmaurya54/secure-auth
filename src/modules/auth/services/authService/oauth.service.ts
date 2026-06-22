@@ -13,6 +13,7 @@ import { createAuditLog } from "@/utils/audit-log";
 import { createUserSession } from "../../helpers/create-user-session";
 import { getDeviceInfo } from "../../helpers/device-info";
 import { getIpAddress } from "../../helpers/ip-address";
+import { redis } from "@/lib/redis";
 
 type HandleGoogleLoginParams = {
     email: string;
@@ -69,7 +70,8 @@ export async function handleGoogleLogin({
                 provider: "GOOGLE",
             },
         });
-
+        const r = await redis.del(`sessions:${user.id}`);
+        console.log("redis key deleted", r, user.id);
         return createUserSession({
             user,
             request,
@@ -124,6 +126,9 @@ export async function handleGoogleLogin({
                 provider: "GOOGLE",
             },
         });
+
+        const r = await redis.del(`sessions:${existingUser.id}`);
+        console.log("redis key deleted", r, existingUser.id);
 
         return createUserSession({
             user: existingUser,
@@ -184,6 +189,8 @@ export async function handleGoogleLogin({
         },
     });
 
+    const r = await redis.del(`sessions:${newUser.id}`);
+    console.log("redis key deleted", r, newUser);
     return createUserSession({
         user: newUser,
         request,

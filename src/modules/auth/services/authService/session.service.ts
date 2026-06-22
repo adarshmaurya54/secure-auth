@@ -18,7 +18,7 @@ export async function getUserSessionsService(userId: string, currentSessionId: s
 
     // db called
     const sessions = await getUserSession(userId);
-
+    console.log(sessions)
 
     const formattedSession = sessions.map((session) => ({
         id: session.id,

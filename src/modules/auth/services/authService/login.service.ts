@@ -92,7 +92,7 @@ export async function loginService(body: LoginInput, requestInfo: LoginRequestIn
     // udpate last login
     await updateLastLogin(user.id);
     const r = await redis.del(`sessions:${user.id}`);
-    console.log("redis key deleted", r);
+    console.log("redis key deleted", r, user.id);
 
     await createAuditLog({
         userId: user.id,
