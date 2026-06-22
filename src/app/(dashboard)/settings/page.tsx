@@ -27,6 +27,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ChangePasswordForm from "@/components/auth/ChangePasswordForm";
 import { Separator } from "@/components/ui/separator";
+import SetPasswordForm from "@/components/auth/SetPasswordForm";
 
 function ChangePasswordModel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const handleClose = () => {
@@ -45,11 +46,29 @@ function ChangePasswordModel({ open, onClose }: { open: boolean; onClose: () => 
     </DialogContent>
   </Dialog>
 }
+function SetPasswordModel({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const handleClose = () => {
+    onClose();
+  }
+  return <Dialog open={open} onOpenChange={handleClose}>
+    <DialogContent className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Set password</DialogTitle>
+        <DialogDescription>
+          Create a password so you can sign in using email and password.
+        </DialogDescription>
+      </DialogHeader>
+      <Separator/>
+      <SetPasswordForm onClose={onClose} />
+    </DialogContent>
+  </Dialog>
+}
 
 export default function SettingsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showSetPassword, setShowSetPassword] = useState(false);
 
   if (loading || !user) return null;
 
@@ -258,12 +277,14 @@ export default function SettingsPage() {
                 <div>
                   <h3 className="font-medium">Password</h3>
                   <p className="text-sm text-muted-foreground">
-                    Change your account password.
+                    {user.hasPassword ? "Change your account password.": "Set you account password"}
                   </p>
                 </div>
-                <Button variant="outline" className="rounded-xl" onClick={() => setShowChangePassword(true)}>
+                {user.hasPassword ? <Button variant="outline" className="rounded-xl" onClick={() => setShowChangePassword(true)}>
                   Change Password
-                </Button>
+                </Button>: <Button variant="outline" className="rounded-xl" onClick={() => setShowSetPassword(true)}>
+                  Set Password
+                </Button>}
               </div>
             </CardContent>
           </Card>
@@ -272,6 +293,10 @@ export default function SettingsPage() {
       <ChangePasswordModel
         open={showChangePassword}
         onClose={() => setShowChangePassword(false)}
+      />
+      <SetPasswordModel
+        open={showSetPassword}
+        onClose={() => setShowSetPassword(false)}
       />
     </div>
   );

@@ -94,8 +94,12 @@ export async function authenticate(
             "Your account has been banned"
         );
     }
+    const { password, ...safeUser } = user;
 
-    return { user, sessionId: payload.sessionId };
+    return { user: {
+        ...safeUser,
+        hasPassword: !!password
+    }, sessionId: payload.sessionId };
 }
 
 export function requireRole(

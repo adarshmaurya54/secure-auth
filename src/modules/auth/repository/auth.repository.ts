@@ -26,6 +26,7 @@ export async function findUserByUserId(userId: string) {
             email: true,
             role: true,
             isVerified: true,
+            password: true,
             status: true,
             createdAt: true,
             updatedAt: true,

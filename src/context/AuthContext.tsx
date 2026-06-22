@@ -12,7 +12,6 @@ import type {
   User,
   AuthState,
 } from "@/types/auth.types";
-import { usePathname } from "next/navigation";
 
 const AuthContext =
   createContext<AuthState | null>(
@@ -24,7 +23,6 @@ export function AuthProvider({ children, }: { children: React.ReactNode; }) {
   const [user, setUser] = useState<User | null>(null);
 
   const [loading, setLoading] = useState(true);
-  const pathname = usePathname();
 
   const login = async (
     email: string,

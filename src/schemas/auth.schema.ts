@@ -59,6 +59,18 @@ export const changePasswordSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmNewPassword"],
 });
+export const setPasswordSchema = z.object({
+  password: z
+    .string()
+    .min(8, "At least 8 characters")
+    .regex(/[A-Z]/, "Include an uppercase letter")
+    .regex(/[0-9]/, "Include a number")
+    .regex(/[^A-Za-z0-9]/, "Include a special character"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
 
 export type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -66,3 +78,4 @@ export type LoginFormValues = z.infer<typeof loginSchema>;
 export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
 export type ChangePasswordValues = z.infer<typeof changePasswordSchema>;
+export type SetPasswordValues = z.infer<typeof setPasswordSchema>;
