@@ -94,7 +94,7 @@ export async function authenticate(
             "Your account has been banned"
         );
     }
-    const { password, ...safeUser } = user;
+    const { password,mfaSecret,mfaPendingSecret, ...safeUser } = user;
 
     return { user: {
         ...safeUser,

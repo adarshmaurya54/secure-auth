@@ -23,52 +23,11 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import ChangePasswordForm from "@/components/auth/ChangePasswordForm";
-import { Separator } from "@/components/ui/separator";
-import SetPasswordForm from "@/components/auth/SetPasswordForm";
-
-function ChangePasswordModel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const handleClose = () => {
-    onClose();
-  }
-  return <Dialog open={open} onOpenChange={handleClose}>
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Change password</DialogTitle>
-        <DialogDescription>
-          All other devices will be signed out after this change.
-        </DialogDescription>
-      </DialogHeader>
-      <Separator/>
-      <ChangePasswordForm onClose={onClose} />
-    </DialogContent>
-  </Dialog>
-}
-function SetPasswordModel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const handleClose = () => {
-    onClose();
-  }
-  return <Dialog open={open} onOpenChange={handleClose}>
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Set password</DialogTitle>
-        <DialogDescription>
-          Create a password so you can sign in using email and password.
-        </DialogDescription>
-      </DialogHeader>
-      <Separator/>
-      <SetPasswordForm onClose={onClose} />
-    </DialogContent>
-  </Dialog>
-}
 
 export default function SettingsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [showChangePassword, setShowChangePassword] = useState(false);
-  const [showSetPassword, setShowSetPassword] = useState(false);
+  
 
   if (loading || !user) return null;
 
@@ -262,42 +221,8 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Security */}
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle>Security</CardTitle>
-              <CardDescription>
-                Manage password and account protection.
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent>
-              <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center">
-                <div>
-                  <h3 className="font-medium">Password</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {user.hasPassword ? "Change your account password.": "Set you account password"}
-                  </p>
-                </div>
-                {user.hasPassword ? <Button variant="outline" className="rounded-xl" onClick={() => setShowChangePassword(true)}>
-                  Change Password
-                </Button>: <Button variant="outline" className="rounded-xl" onClick={() => setShowSetPassword(true)}>
-                  Set Password
-                </Button>}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
-      <ChangePasswordModel
-        open={showChangePassword}
-        onClose={() => setShowChangePassword(false)}
-      />
-      <SetPasswordModel
-        open={showSetPassword}
-        onClose={() => setShowSetPassword(false)}
-      />
     </div>
   );
 }

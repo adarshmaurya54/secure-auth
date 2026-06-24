@@ -6,9 +6,9 @@ export const authService = {
         const res = await api.post("/auth/register", data);
         return res.data;
     },
-    async login(data: LoginFormValues): Promise<User> {
+    async login(data: LoginFormValues) {
         const res = await api.post("/auth/login", data);
-        return res.data.data.user;
+        return res.data.data;
     },
     async logout() {
         await api.post("/auth/logout");
@@ -40,5 +40,5 @@ export const authService = {
     async setPassword(data: {password: string, confirmPassword: string}) {
         const res = await api.post("/auth/set-password", data)
         return res.data
-    }
+    },
 };

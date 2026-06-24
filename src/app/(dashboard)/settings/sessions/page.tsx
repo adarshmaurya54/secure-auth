@@ -28,7 +28,7 @@ function SessionsSkeleton() {
 export default function SessionsPage() {
   const { sessions, loading, setSessions } = useSession();
   const [isRevokingAll, setIsRevokingAll] = useState(false);
-  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+  const [revokingSessionIds, setRevokingSessionIds] = useState<string[]>([]);
   const router = useRouter();
 
   const handleLogoutAllDevices = async () => {
@@ -47,14 +47,16 @@ export default function SessionsPage() {
 
   const handleRemoveSession = async (sessionId: string) => {
     try {
-      setRevokingSessionId(sessionId);
+      setRevokingSessionIds(prev => [...prev, sessionId]);
       await sessionService.revokeSession(sessionId);
       toast.success("Device removed");
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
     } catch (error) {
       showApiError(error);
     } finally {
-      setRevokingSessionId(null);
+      setRevokingSessionIds(prev =>
+        prev.filter(id => id !== sessionId)
+      );
     }
   };
 
@@ -84,7 +86,7 @@ export default function SessionsPage() {
       ) : (
         <SessionList
           sessions={sessions}
-          revokingSessionId={revokingSessionId}
+          revokingSessionIds={revokingSessionIds}
           onRevoke={handleRemoveSession}
         />
       )}

@@ -42,6 +42,13 @@ enum AuditEvent {
   ACCOUNT_SUSPENDED
   OAUTH_LINKED
   OAUTH_LOGIN
+  MFA_SETUP_STARTED
+  MFA_ENABLED
+  MFA_DISABLED
+  MFA_VERIFY_SUCCESS
+  MFA_VERIFY_FAILED
+  MFA_BACKUP_CODE_USED
+  MFA_BACKUP_CODES_REGENERATED
 }
 
 // ---------------------- Models -------------------
@@ -58,13 +65,18 @@ model User {
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 
+  // MFA 
+  mfaEnabled            Boolean                @default(false)
+  mfaSecret             String?                // AES-256-GCM encrypted TOTP secret
+  mfaBackupCodes        String[]               // hashed backup codes array
+  mfaPendingSecret      String?
+
   sessions              Session[]
   oauthAccounts         OAuthAccount[]
   verificationCodes     VerificationCode[]
   passwordResetTokens   PasswordResetToken[]
   auditLogs             AuditLog[]
 }
-
 
 model Session {
   id                 String   @id @default(uuid())
@@ -84,6 +96,8 @@ model Session {
   lastUsedAt         DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model OAuthAccount {
@@ -125,6 +139,8 @@ model PasswordResetToken {
   createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model AuditLog {
@@ -137,4 +153,7 @@ model AuditLog {
   createdAt   DateTime     @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
 }

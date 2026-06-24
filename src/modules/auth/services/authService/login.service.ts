@@ -6,6 +6,9 @@ import * as argon from "argon2"
 import { generateAccessToken, generateRefreshToken } from "../../helpers/jwt";
 import { hashToken } from "../../helpers/hash-token";
 import { redis } from "@/lib/redis";
+import { createTempMfaToken } from "../../helpers/temp-mfa-token";
+import { createLoginSession } from "./create-login-session.service";
+import { LoginResponse } from "../../types/auth.types";
 
 type LoginInput = {
     email: string;
@@ -18,15 +21,13 @@ type LoginRequestInfo = {
     browser: string;
     os: string
 }
-export async function loginService(body: LoginInput, requestInfo: LoginRequestInfo) {
+export async function loginService(body: LoginInput, requestInfo: LoginRequestInfo): Promise<LoginResponse> {
     // zod validation for body
     const validatedData = loginSchema.safeParse(body);
 
     if (!validatedData.success) {
         throw new Error(validatedData.error.issues[0].message);
     }
-
-    console.log("Login service is called")
 
     const { email, password } = validatedData.data;
 
@@ -63,57 +64,20 @@ export async function loginService(body: LoginInput, requestInfo: LoginRequestIn
         throw new Error("Invalid email or password");
     }
 
+    if (user.mfaEnabled) {
+        const tempToken = await createTempMfaToken(user.id); 
+        return {
+            mfaRequired: true,
+            tempToken,
+            user: null,
+            accessToken: null,
+            refreshToken: null
+        }
+    }
+
     if (user.status === AccountStatus.SUSPENDED || user.status === AccountStatus.BANNED) {
         throw new Error("Your account is suspended or banned, please contact support for more information");
     }
 
-    // generate tokens
-
-
-    const { token: refreshToken, jti } = generateRefreshToken(user.id)
-
-    const refreshTokenHash = hashToken(refreshToken);
-
-    const session = await createSession({
-        userId: user.id,
-        refreshTokenHash,
-
-        ipAddress: requestInfo.ipAddress,
-        device: requestInfo.device,
-        browser: requestInfo.browser,
-        os: requestInfo.os,
-
-        expiresAt: new Date(
-            Date.now() + 30 * 24 * 60 * 60 * 1000
-        )
-    })
-    const accessToken = generateAccessToken(user.id, session.id, user.role);
-
-    // udpate last login
-    await updateLastLogin(user.id);
-    const r = await redis.del(`sessions:${user.id}`);
-    console.log("redis key deleted", r, user.id);
-
-    await createAuditLog({
-        userId: user.id,
-        event: AuditEvent.LOGIN_SUCCESS,
-        ipAddress: requestInfo.ipAddress,
-        device: requestInfo.device,
-        metadata: {
-            sessionId: session.id,
-            jti
-        }
-    })
-
-    return {
-        user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            isVerified: user.isVerified,
-            role: user.role
-        },
-        accessToken,
-        refreshToken
-    }
+    return createLoginSession(user, requestInfo);
 }

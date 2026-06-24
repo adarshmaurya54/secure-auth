@@ -14,6 +14,7 @@ import { createUserSession } from "../../helpers/create-user-session";
 import { getDeviceInfo } from "../../helpers/device-info";
 import { getIpAddress } from "../../helpers/ip-address";
 import { redis } from "@/lib/redis";
+import { createTempMfaToken } from "../../helpers/temp-mfa-token";
 
 type HandleGoogleLoginParams = {
     email: string;
@@ -22,6 +23,7 @@ type HandleGoogleLoginParams = {
     request: NextRequest;
     response?: NextResponse
 };
+
 
 export async function handleGoogleLogin({
     email,
@@ -72,6 +74,19 @@ export async function handleGoogleLogin({
         });
         const r = await redis.del(`sessions:${user.id}`);
         console.log("redis key deleted", r, user.id);
+        if (user.mfaEnabled) {
+
+            const tempToken =
+                await createTempMfaToken(
+                    user.id
+                );
+
+            return NextResponse.redirect(
+                `${process.env.APP_URL}/oauth-mfa?tempToken=${tempToken}`
+            );
+        }
+
+
         return createUserSession({
             user,
             request,
@@ -129,6 +144,18 @@ export async function handleGoogleLogin({
 
         const r = await redis.del(`sessions:${existingUser.id}`);
         console.log("redis key deleted", r, existingUser.id);
+
+        if (existingUser.mfaEnabled) {
+
+            const tempToken =
+                await createTempMfaToken(
+                    existingUser.id
+                );
+
+            return NextResponse.redirect(
+                `${process.env.APP_URL}/oauth-mfa?tempToken=${tempToken}`
+            );
+        }
 
         return createUserSession({
             user: existingUser,
@@ -191,9 +218,22 @@ export async function handleGoogleLogin({
 
     const r = await redis.del(`sessions:${newUser.id}`);
     console.log("redis key deleted", r, newUser);
-    return createUserSession({
-        user: newUser,
-        request,
-        response
-    });
+    // although for the new user, currently user dont have mfa but for the consistency use this
+    if (newUser.mfaEnabled) {
+
+    const tempToken =
+        await createTempMfaToken(
+            newUser.id
+        );
+
+    return NextResponse.redirect(
+        `${process.env.APP_URL}/oauth-mfa?tempToken=${tempToken}`
+    );
+}
+
+return createUserSession({
+    user: newUser,
+    request,
+    response
+});
 }

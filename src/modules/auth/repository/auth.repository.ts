@@ -2,7 +2,6 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import {RegisterInput} from "@/modules/auth/validators/auth.validators"
-import { gt } from "zod";
 
 type tx = Prisma.TransactionClient;
 
@@ -16,7 +15,10 @@ export async function findUserByUserId(userId: string) {
     const cacheKey = `user:${userId}`;
 
     const cached = await redis.get(cacheKey);
-    if(cached) return JSON.parse(cached);
+    if(cached) {
+        console.log("cached value returned - user")
+        return JSON.parse(cached);
+    }
 
     const user = await prisma.user.findUnique({
         where: {id: userId},
@@ -27,6 +29,9 @@ export async function findUserByUserId(userId: string) {
             role: true,
             isVerified: true,
             password: true,
+            mfaEnabled: true,
+            mfaSecret: true,
+            mfaPendingSecret: true,
             status: true,
             createdAt: true,
             updatedAt: true,
@@ -55,7 +60,10 @@ export async function updateUserPasswordByUserId(userId: string, hashPassword: s
 export async function findSessionBySessionId(sessionId: string){
     const cacheKey = `session:${sessionId}`;
     const cached = await redis.get(cacheKey);
-    if(cached) return JSON.parse(cached);
+    if(cached) {
+        console.log("Cached value returned - session")
+        return JSON.parse(cached);
+    }
 
     const session = await prisma.session.findUnique({
         where: {

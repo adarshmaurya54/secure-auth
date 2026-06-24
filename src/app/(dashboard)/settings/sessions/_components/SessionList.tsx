@@ -3,15 +3,15 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { MonitorX } from "lucide-react";
 import { SessionCard } from "./SessionCard";
-import type {Session} from "@/types/session.types"
+import type { Session } from "@/types/session.types"
 
 type SessionListProps = {
   sessions: Session[];
-  revokingSessionId: string | null;
+  revokingSessionIds: string[];
   onRevoke: (id: string) => void;
 };
 
-export function SessionList({ sessions, revokingSessionId, onRevoke }: SessionListProps) {
+export function SessionList({ sessions, revokingSessionIds, onRevoke }: SessionListProps) {
   if (sessions.length === 0) {
     return (
       <Card>
@@ -32,7 +32,7 @@ export function SessionList({ sessions, revokingSessionId, onRevoke }: SessionLi
         <SessionCard
           key={session.id}
           session={session}
-          isRevoking={revokingSessionId === session.id}
+          isRevoking={revokingSessionIds.includes(session.id)}
           onRevoke={onRevoke}
         />
       ))}

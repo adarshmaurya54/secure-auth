@@ -215,9 +215,19 @@ export default function DashboardLayout({
                   </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem className="flex h-11 cursor-pointer items-center rounded-2xl px-3 text-sm font-medium transition hover:bg-muted">
-                  <Shield className="mr-3 h-4 w-4" />
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/security"
+                    className={`flex h-11 cursor-pointer items-center rounded-2xl px-3 text-sm font-medium transition ${
+                      pathname ===
+                      "/security"
+                        ? "bg-muted"
+                        : "hover:bg-muted"
+                    }`}
+                  >
+                    <Shield className="mr-3 h-4 w-4" />
                   Security
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
 

@@ -24,18 +24,20 @@ export async function POST(req: NextRequest){
                 os: deviceInfo.os
             }
         )
+        if(result.mfaRequired) {
+            return successResponse("MFA required", {mfaRequired: true, tempToken: result.tempToken}, 200)
+        }
 
         const response = successResponse("Login successfull", {user: result.user}, 200)
 
         setAuthCookies(
             response,
-            result.accessToken,
-            result.refreshToken
+            result.accessToken!,
+            result.refreshToken!
         )
 
         return response;
     }catch(error){
-        console.log(error instanceof Error ? error.message : "")
         return errorResponse(error instanceof Error ? error.message : "Something went wrong", null, 500)
     }
 }

@@ -11,13 +11,14 @@ import Link from "next/link";
 import { Button } from "../ui/button";
 import { PasswordInput } from "./PasswordInput";
 import { showApiError } from "@/lib/errors/toast-error";
+import { authService } from "@/services/auth.service";
 
 export function LoginForm() {
     const router = useRouter();
     const searchParam = useSearchParams();
 
     const callbackUrl = searchParam.get("callbackUrl")
-    const { login } = useAuth();
+    const { login, setUser } = useAuth();
     const [serverError, setServerError] = useState('');
 
     const form = useForm<LoginFormValues>({
@@ -32,7 +33,18 @@ export function LoginForm() {
     const onSubmit = async (values: LoginFormValues) => {
         try {
             setServerError('');
-            await login(values.email, values.password);
+            const result = await authService.login({email: values.email, password: values.password});
+            if (result.mfaRequired) {
+                sessionStorage.setItem(
+                    "mfaTempToken",
+                    result.tempToken
+                );
+
+                router.push("/mfa/verify");
+
+                return;
+            }
+            setUser(result.user);
             router.replace(callbackUrl ?? "/dashboard");
         } catch (err) {
             showApiError(
