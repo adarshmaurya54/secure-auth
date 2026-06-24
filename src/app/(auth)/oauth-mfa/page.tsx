@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function OAuthMfaPage() {
     const router = useRouter();
-    const searchParams = useSearchParams();
 
     useEffect(() => {
-        const tempToken = searchParams.get("tempToken");
+        const params = new URLSearchParams(window.location.search);
+
+        const tempToken = params.get("tempToken");
 
         if (!tempToken) {
             router.replace("/login");
@@ -21,7 +22,7 @@ export default function OAuthMfaPage() {
         );
 
         router.replace("/mfa/verify");
-    }, [router, searchParams]);
+    }, [router]);
 
     return (
         <div className="flex min-h-screen items-center justify-center">
