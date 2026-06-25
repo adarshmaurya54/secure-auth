@@ -38,7 +38,7 @@ import { toast } from "sonner";
 import Image from "next/image";
 import { api } from "@/lib/api";
 import { showApiError } from "@/lib/errors/toast-error";
-
+import { Skeleton } from "@/components/ui/skeleton";
 // ─── Change Password Modal ───────────────────────────────────────
 
 function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -96,6 +96,18 @@ function MfaEnableModal({
     const [backupCodes, setBackupCodes] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [secret, setSecret] = useState("")
+
+    const handleCopy = async () => {
+        console.log("COplying")
+        await navigator.clipboard.writeText(secret);
+
+        setCopied(true);
+
+        setTimeout(() => {
+            setCopied(false);
+        }, 2000);
+    };
 
     useEffect(() => {
         if (open) {
@@ -110,6 +122,8 @@ function MfaEnableModal({
             const { data } = await api.get("/auth/mfa/setup");
 
             setQrUrl(data.data.qrCodeUrl);
+            setSecret(data.data.secret);
+
 
         } catch (error: any) {
             showApiError(error);
@@ -213,11 +227,46 @@ function MfaEnableModal({
                                 <Image src={qrUrl} alt="MFA QR Code" width={180} height={180} />
                             </div>
                         )}
+
+                        <div className="w-full space-y-2">
+                            <Label>Manual Setup Key</Label>
+
+                            <div className="w-full">
+                                {loading || !secret ? (
+                                    <div className="relative">
+                                        <Skeleton className="h-10 w-full rounded-md" />
+                                        <Skeleton className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-md" />
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        <Input
+                                            value={secret}
+                                            readOnly
+                                            className="pr-12"
+                                        />
+
+                                        <Button
+                                            variant="ghost"
+                                            className="absolute right-2"
+                                            onClick={handleCopy}
+                                        >
+                                           {copied ? (
+                                                <Check className="h-4 w-4 text-green-600" />
+                                            ) : (
+                                                <Copy className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
                         <ol className="w-full list-decimal list-inside space-y-1 text-sm text-muted-foreground">
-                            <li>Google Authenticator ya Authy install karo</li>
-                            <li>App mein "+" tap karo</li>
-                            <li>Yeh QR code scan karo</li>
+                            <li>Install Google Authenticator, Microsoft Authenticator, or Authy.</li>
+                            <li>Open the app and tap the <strong>+</strong> button.</li>
+                            <li>Scan the QR code or enter the setup key manually.</li>
                         </ol>
+
                         <Button
                             className="w-full rounded-xl"
                             onClick={() => setStep("verify")}
